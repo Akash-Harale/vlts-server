@@ -1,0 +1,141 @@
+{
+  "info": {
+    "name": "VLTS Trip History API",
+    "_postman_id": "12345678-abcd-efgh-ijkl-987654321000",
+    "description": "Postman collection for VLTS Trip History API (Summary, Events, Replay)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Trip History (Summary)",
+      "item": [
+        {
+          "name": "Get Trip Summary by Trip ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/trip/{{tripId}}"
+          }
+        },
+        {
+          "name": "Get Trips by Vehicle ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/vehicle/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Get Trips by Driver ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/driver/{{driverId}}"
+          }
+        },
+        {
+          "name": "Get All Trips",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/all"
+          }
+        },
+        {
+          "name": "Get Trips by Date Range",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/date-range",
+            "urlEncoded": [
+              { "key": "startDate", "value": "2026-02-01" },
+              { "key": "endDate", "value": "2026-02-25" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trip History Events",
+      "item": [
+        {
+          "name": "Get Trip Events by Trip ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/trip/{{tripId}}/events"
+          }
+        },
+        {
+          "name": "Get Trip Events by Vehicle ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/vehicle/{{vehicleId}}/events"
+          }
+        },
+        {
+          "name": "Get Trip Events by Driver ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/driver/{{driverId}}/events"
+          }
+        },
+        {
+          "name": "Get All Trip Events",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/all/events"
+          }
+        },
+        {
+          "name": "Get Trip Events by Date Range",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/events/date-range",
+            "urlEncoded": [
+              { "key": "startDate", "value": "2026-02-01" },
+              { "key": "endDate", "value": "2026-02-25" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trip History Events Replay",
+      "item": [
+        {
+          "name": "Replay Trip Events by Trip ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/history/trip/{{tripId}}/replay"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3005"
+    },
+    {
+      "key": "tripId",
+      "value": "67b123abc456def7890"
+    },
+    {
+      "key": "vehicleId",
+      "value": "67b123abc456def7890"
+    },
+    {
+      "key": "driverId",
+      "value": "67b123abc456def7890"
+    }
+  ]
+}
+
