@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: vlts-server
+    restart: always
+    ports:
+      - "3006:3000"
+    env_file:
+      - .env
