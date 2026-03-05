@@ -6,6 +6,9 @@ services:
     container_name: vlts-server
     restart: always
     ports:
-      - "3006:3000"
+      - "127.0.0.1:3006:3000"
     env_file:
       - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
