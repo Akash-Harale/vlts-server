@@ -5,6 +5,9 @@
   "bin": "server.js",
   "scripts": {
     "start": "node server.js",
+    "tcpserver":"node ./services/tcpServer.js",
+    "gpssimulator":"node ./simulator/gpsSimulator.js",
+    "start:all": "npm run tcpserver & npm run gpssimulator & npm start",
     "dev": "nodemon server.js"
   },
   "keywords": [
