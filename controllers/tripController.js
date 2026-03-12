@@ -248,6 +248,10 @@ exports.fetchTrips = async (req, res) => {
       trip_dep_status: a.trip_dep_status,
       trip_arrival_status: a.trip_arrival_status,
       trip_actual_arrival_time: a.trip_actual_arrival_time ?? null,
+      max_speed: a.max_speed || 0,
+      avg_speed: a.avg_speed || 0,
+      total_distance: a.total_distance || 0,
+      position_name: a.position_name || null,
       __v: a.__v
     }));
 
@@ -336,6 +340,10 @@ exports.fetchTripsByVehicle = async (req, res) => {
       trip_dep_status: a.trip_dep_status ?? null,
       trip_arrival_status: a.trip_arrival_status ?? null,
       trip_actual_arrival_time: a.trip_actual_arrival_time ?? null,
+      max_speed: a.max_speed || 0,
+      avg_speed: a.avg_speed || 0,
+      total_distance: a.total_distance || 0,
+      position_name: a.position_name || null,
       __v: a.__v
     }));
 
@@ -422,7 +430,13 @@ exports.fetchRouteGeometry = async (req, res) => {
             name: trip.driver_id.driver_name,
             mobileNumber: trip.driver_id.mobile_number
           }
-          : null
+          : null,
+        stats: {
+          max_speed: trip.max_speed || 0,
+          avg_speed: trip.avg_speed || 0,
+          total_distance: trip.total_distance || 0,
+          position_name: trip.position_name || null
+        }
       }
     });
   } catch (err) {
@@ -503,6 +517,10 @@ exports.fetchTripsByStatus = async (req, res) => {
         assignment_desc: a.assignment_desc,
         assigned_at: a.assigned_at,
         status: a.status,
+        max_speed: a.max_speed || 0,
+        avg_speed: a.avg_speed || 0,
+        total_distance: a.total_distance || 0,
+        position_name: a.position_name || null,
         trip_approval_status: a.trip_approval_status,
         trip_dep_status: a.trip_dep_status,
         trip_arrival_status: a.trip_arrival_status,
@@ -797,6 +815,10 @@ exports.getTripsByVehicleOrDriver = async (req, res) => {
       trip_dep_status: a.trip_dep_status,
       trip_arrival_status: a.trip_arrival_status,
       trip_actual_arrival_time: a.trip_actual_arrival_time ?? null,
+      max_speed: a.max_speed || 0,
+      avg_speed: a.avg_speed || 0,
+      total_distance: a.total_distance || 0,
+      position_name: a.position_name || null,
       __v: a.__v
     }));
 

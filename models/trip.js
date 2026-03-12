@@ -26,7 +26,11 @@ const tripSchema = new mongoose.Schema({
   trip_dep_status: { type: String, enum: ["DEPARTED", "AWAITED", "CANCELLED"], default: "AWAITED" },
   trip_arrival_status: { type: String, enum: ["INTIME", "ONTIME", "DELAYED", "AWAITED"], default: "AWAITED" },
   trip_actual_arrival_time: { type: Date, default: null },
-  trip_arrival_notes: { type: String }
+  trip_arrival_notes: { type: String },
+  max_speed: { type: Number, default: 0 },
+  avg_speed: { type: Number, default: 0 },
+  total_distance: { type: Number, default: 0 },
+  position_name: { type: String, default: null },
 });
 
 // Prevent duplicate vehicle–route pair

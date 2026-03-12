@@ -1,198 +1,241 @@
-// /services/wsServer.js
+// services/wsServer.js
+// WebSocket Server with Replay + Geofence
 
-/*
-Summary
-- Vehicle WebSocket client → sends live GPS with registration number + route info.
-- WebSocket server → validates vehicle, route, geofence → stores history in vehicle_routes_history.
-- Admin WebSocket client → receives live updates with geofence status for dashboard visualization.
-- Replay support → Admin can request past trip data on demand.
-
-Console logs added for:
-- Raw messages received ( Received raw message )
-- Payloads being handled ( Handling vehicle update, Handling replay request )
-- Stored history ( Stored vehicle history )
-- Payloads being broadcast ( Broadcasting live payload, Sending replay payload )
-- Warnings when vehicle/route/geofence not found
-*/
-
+// services/wsServer.js
 const WebSocket = require('ws');
-const Vehicle = require('../models/vehicle');
-const Route = require('../models/route');
+const Telemetry = require('../models/telemetry');
 const Geofence = require('../models/geofence');
-const VehicleRouteHistory = require('../models/vehicleTripsHistory');
 const turf = require('@turf/turf');
-const Driver = require('../models/driver'); // corrected naming for clarity
 
-/**
- * Start WebSocket server
- * @param {http.Server} server - Node HTTP server instance
- */
 function startWebSocketServer(server) {
   const wss = new WebSocket.Server({ server });
 
-  // Fired when a new client (Vehicle or Admin) connects
   wss.on('connection', (ws) => {
     console.log(' WebSocket client connected');
+    ws.subscriptions = {};
+    ws.replayState = { active: false, paused: false, speed: 1 };
 
-    // Handle incoming messages from clients
     ws.on('message', async (message) => {
       try {
-        console.log(' Received raw message:', message.toString());
         const data = JSON.parse(message);
 
-        // Handle live GPS updates from vehicles
-        if (data.type === 'update') {
-          console.log(' Handling vehicle update payload:', data);
-          await handleVehicleUpdate(ws, wss, data);
+        if (data.type === 'subscribe') {
+          ws.subscriptions = {
+            vehicle_id: data.vehicle_id || null,
+            trip_id: data.trip_id || null,
+            session_id: data.session_id || null
+          };
+          console.log(' Client subscription updated:', ws.subscriptions);
         }
 
-        // Handle replay requests from Admin clients
-        // Uncomment when replay testing is required
-        /*
         if (data.type === 'replay') {
-          console.log(' Handling replay request payload:', data);
+          console.log(' Handling replay request:', data);
+          ws.replayState = { active: true, paused: false, speed: 1 };
           await handleReplay(ws, data);
         }
-        */
+
+        if (data.type === 'pause') {
+          ws.replayState.paused = true;
+          console.log(' Replay paused');
+        }
+
+        if (data.type === 'resume') {
+          ws.replayState.paused = false;
+          console.log(' Replay resumed');
+        }
+
+        if (data.type === 'fastforward') {
+          ws.replayState.speed = data.speed || 2;
+          console.log(` Replay fast-forward set to ${ws.replayState.speed}x`);
+        }
       } catch (err) {
         console.error(' WebSocket error:', err.message);
-        ws.send(JSON.stringify({ error: 'Invalid message format or server error' }));
       }
     });
   });
 
   console.log(' WebSocket server started');
+  return wss;
 }
 
-/**
- * Handle live vehicle GPS updates
- * @param {WebSocket} ws - Client socket
- * @param {WebSocket.Server} wss - WebSocket server
- * @param {Object} data - Incoming payload
- */
-async function handleVehicleUpdate(ws, wss, data) {
-  /*
-  Example payload from VehicleClient (GPS device):
-  {
-    route_id: "12345",
-    vehicle_id: "67890",
-    driver_id: "abcde",
-    type: "update",
-    coordinates: [77.2090, 28.6139] // [lng, lat]
-  }
-  */
 
-  const { route_id, vehicle_id, driver_id, coordinates } = data;
+function broadcastTelemetry(wss, telemetryDoc) {
+  if (!telemetryDoc) return;
 
-  // 1. Resolve vehicle
-  const vehicle = await Vehicle.findById(vehicle_id); // corrected usage
-  if (!vehicle) {
-    console.warn(` Vehicle not found: ${vehicle_id}`);
-    return ws.send(JSON.stringify({ error: 'Vehicle not found' }));
-  }
+  const payload = typeof telemetryDoc.toObject === 'function'
+    ? telemetryDoc.toObject()
+    : telemetryDoc;
 
-  // 2. Resolve route + geofence
-  const route = route_id
-    ? await Route.findById(route_id)
-    : await Route.findOne({ name: data.route_name }); // fallback if route_name provided
+  console.log('[broadcastTelemetry] Incoming telemetry:', payload);
 
-  const geofence = await Geofence.findOne({ route_id: route?._id });
+  // Helper to send payload to all matching clients
+  const sendPayload = (geofenceStatus) => {
+    const enrichedPayload = { type: 'live', ...payload, geofence_status: geofenceStatus };
+    console.log('[broadcastTelemetry] Broadcasting payload:', enrichedPayload);
 
-  if (!route || !geofence) {
-    console.warn(` Route or geofence not found for: ${data.route_name || route_id}`);
-    return ws.send(JSON.stringify({ error: 'Route or geofence not found' }));
-  }
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        const { vehicle_id, trip_id, session_id } = client.subscriptions || {};
+        const matchVehicle = !vehicle_id || payload.vehicle_id?.toString() === vehicle_id;
+        const matchTrip = !trip_id || payload.trip_id?.toString() === trip_id;
+        const matchSession = !session_id || payload.session_id === session_id;
 
-  // 3. Check geofence status using Turf.js
-  const pt = turf.point(coordinates);
-  const poly = turf.polygon(geofence.geometry.coordinates);
-  const geofenceStatus = turf.booleanPointInPolygon(pt, poly) ? 'WITHIN' : 'OUTSIDE';
-
-  // 4. Resolve driver (optional, if driver_id provided)
-  const driver = driver_id ? await Driver.findById(driver_id) : null;
-  if (!driver) {
-    console.warn(` Driver not found: ${driver_id}`);
-    return ws.send(JSON.stringify({ error: 'Driver not found' }));
-  }
-
-  // 5. Store history in MongoDB
-  const history = new VehicleRouteHistory({
-    vehicle_id: vehicle._id,
-    registration_number: vehicle.registration_number,
-    route_id: route._id,
-    route_name: route.name,
-    driver_id: driver?._id,
-    driver_name: driver?.driver_name,
-    location: { type: 'Point', coordinates },
-    geofence_status: geofenceStatus
-  });
-
-  await history.save();
-  console.log(' Stored vehicle history:', history.toObject());
-
-  // 6. Broadcast live update to all Admin clients
-  const payload = {
-    type: 'live',
-    route_id,
-    route_name: route.name,
-    vehicle_id,
-    registration_number: vehicle.registration_number,
-    driver_id,
-    driver_name: driver?.driver_name,
-    coordinates,
-    geofence_status: geofenceStatus,
-    timestamp: history.timestamp
+        if (matchVehicle && matchTrip && matchSession) {
+          client.send(JSON.stringify(enrichedPayload));
+        }
+      }
+    });
   };
 
-  console.log(' Broadcasting live payload to admins:', payload);
-
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(payload));
-    }
-  });
+  // If route_id exists, enrich with geofence check
+  if (payload.route_id) {
+    Geofence.findOne({ route_id: payload.route_id }).then((geofence) => {
+      let geofenceStatus = null;
+      if (geofence) {
+        try {
+          const pt = turf.point(payload.location.coordinates);
+          const poly = turf.polygon(geofence.geometry.coordinates);
+          geofenceStatus = turf.booleanPointInPolygon(pt, poly) ? 'WITHIN' : 'OUTSIDE';
+        } catch (err) {
+          console.error('[broadcastTelemetry] Geofence check error:', err.message);
+        }
+      }
+      sendPayload(geofenceStatus);
+    });
+  } else {
+    // No route_id → still broadcast, geofence_status = null
+    sendPayload(null);
+  }
 }
 
-/**
- * Handle on-demand trip replay requests (Admin only)
- * Uncomment when replay feature is needed
- */
-/*
+
+
 async function handleReplay(ws, data) {
-  const { vehicle_id, registration_number, route_id, route_name } = data;
-
-  // Build query dynamically based on provided identifiers
   const query = {};
-  if (vehicle_id) query.vehicle_id = vehicle_id;
-  if (registration_number) query.registration_number = registration_number;
-  if (route_id) query.route_id = route_id;
-  if (route_name) query.route_name = route_name;
+  if (data.vehicle_id) query.vehicle_id = data.vehicle_id;
+  if (data.trip_id) query.trip_id = data.trip_id;
+  if (data.session_id) query.session_id = data.session_id;
 
-  const history = await VehicleRouteHistory.find(query).sort({ timestamp: 1 });
-
+  const history = await Telemetry.find(query).sort({ timestamp: 1 });
   if (!history.length) {
-    console.warn(` No trip history found for query:`, query);
+    console.warn(' No telemetry found for replay query:', query);
     return ws.send(JSON.stringify({ error: 'No trip history found' }));
   }
 
-  console.log(` Streaming replay for ${registration_number || vehicle_id} on route ${route_name || route_id}`);
+  console.log(` Streaming replay for query:`, query);
 
-  // Stream history points one by one to simulate replay
   for (const point of history) {
+    while (ws.replayState.paused) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    if (!ws.replayState.active) break;
+
+    let geofenceStatus = null;
+    if (point.route_id) {
+      const geofence = await Geofence.findOne({ route_id: point.route_id });
+      if (geofence) {
+        const pt = turf.point(point.location.coordinates);
+        const poly = turf.polygon(geofence.geometry.coordinates);
+        geofenceStatus = turf.booleanPointInPolygon(pt, poly) ? 'WITHIN' : 'OUTSIDE';
+      }
+    }
+
     const payload = {
       type: 'replay',
-      registration_number: point.registration_number,
-      route_name: point.route_name,
+      vehicle_id: point.vehicle_id,
+      trip_id: point.trip_id,
+      session_id: point.session_id,
       coordinates: point.location.coordinates,
-      geofence_status: point.geofence_status,
-      timestamp: point.timestamp
+      speed: point.speed,
+      direction: point.direction,
+      state: point.state,
+      timestamp: point.timestamp,
+      geofence_status: geofenceStatus
     };
 
     console.log(' Sending replay payload:', payload);
     ws.send(JSON.stringify(payload));
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay between points
+
+    // Delay adjusted by fast-forward speed
+    const delay = 1000 / ws.replayState.speed;
+    await new Promise(resolve => setTimeout(resolve, delay));
   }
 }
-*/
 
-module.exports = startWebSocketServer;
+module.exports = { startWebSocketServer, broadcastTelemetry };
+
+/* Explanation
+
+
+Payloads Explained
+
+Live Broadcast Payload
+{
+  "type": "live",
+  "session_id": "uuid-session-123",
+  "vehicle_id": "V001",
+  "trip_id": "T001",
+  "route_id": "R001",
+  "coordinates": [77.2090, 28.6139],
+  "speed": 65,
+  "direction": 142,
+  "state": "MOVING",
+  "timestamp": "2026-02-28T01:25:00Z",
+  "geofence_status": "WITHIN"
+}
+
+
+- session_id: groups points for a continuous trip/session.
+- vehicle_id / trip_id / route_id: context.
+- coordinates: GeoJSON point for replay.
+- speed/direction/state: telemetry attributes.
+- geofence_status: computed live using Turf.js.
+
+Replay Payload
+{
+  "type": "replay",
+  "session_id": "uuid-session-123",
+  "vehicle_id": "V001",
+  "trip_id": "T001",
+  "coordinates": [77.2095, 28.6142],
+  "speed": 45,
+  "direction": 90,
+  "state": "MOVING",
+  "timestamp": "2026-02-28T01:26:00Z",
+  "geofence_status": "OUTSIDE"
+}
+
+
+- Same structure, but streamed sequentially from historical telemetry.
+- Simulates trip playback with 1s delay between points.
+
+With this design:
+- Geofence checks are integrated into both live broadcasts and replay.
+- Payloads are consistent: session_id, vehicle/trip context, telemetry attributes, geofence status.
+- Replay logic streams telemetry points by session_id or trip_id, simulating real‑time playback.
+
+
+Replay Control Logic
+Admins can send control messages to the WebSocket server to manage replay:
+- Start Replay: { "type": "replay", "session_id": "uuid-session-123" }
+- Pause Replay: { "type": "pause" }
+- Resume Replay: { "type": "resume" }
+- Fast‑Forward Replay: { "type": "fastforward", "speed": 2 } (2× speed)
+
+
+Payloads Recap
+Live Payload
+- Sent immediately when enrichmentWorker saves telemetry.
+- Contains:
+- session_id, vehicle_id, trip_id, route_id
+- coordinates, speed, direction, state, timestamp
+- geofence_status (WITHIN/OUTSIDE)
+
+
+Replay Payload
+- Sent sequentially from historical telemetry.
+- Same structure as live payload.
+- Streamed with delay (1s default, adjustable with fast‑forward).
+- Replay can be paused/resumed interactively.
+
+*/

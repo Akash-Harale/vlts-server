@@ -43,8 +43,11 @@ async function migrateTripToHistory(tripId) {
             departure_time: trip.departure_time,
             arrival_time: trip.arrival_time,
             trip_arrival_status: trip.trip_arrival_status,
-            trip_actual_arrival_time: trip.trip_actual_arrival_time,
             trip_arrival_notes: trip.trip_arrival_notes,
+            max_speed: trip.max_speed || 0,
+            avg_speed: trip.avg_speed || 0,
+            total_distance: trip.total_distance || 0,
+            position_name: trip.position_name || null,
             assignment_desc: trip.assignment_desc,
             assigned_at: trip.assigned_at
         }], { session });

@@ -15,7 +15,9 @@ const bodyParser = require("body-parser");
 const cors = require("cors"); // Import CORS middleware
 const connectDB = require("./config/db"); // Import DB connection
 const http = require("http");
-const startWebSocketServer = require("./services/wsServer");
+//const startWebSocketServer = require("./services/wsServer");
+const { startWebSocketServer } = require("./services/wsServer");
+const { startEnrichmentLoop } = require("./workers/enrichmentWorker");  // 7 March 2026
 
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const platformTenantRoutes = require("./routes/platformTenantRoutes");
@@ -46,6 +48,11 @@ const tripHistoryRoutes = require("./routes/tripHistoryRoutes");               /
 const tripHistoryEventsRoutes = require("./routes/tripHistoryEventsRoutes");   // event-level trip data
 const tripHistoryEventsReplayRoutes = require("./routes/tripHistoryEventsReplayRoutes"); // replay events
 
+// 28/02/2026
+const gpsAlertRoutes = require("./routes/gpsAlertRoutes");
+const telemetryRoutes = require("./routes/telemetryRoutes");
+const telemetryStatsRoutes = require("./routes/telemetryStatsRoutes");
+const telemetryDashboardRoutes = require("./routes/telemetryDashboardRoutes");
 
 // Import health check job
 require("./jobs/deviceHealthCheck");
@@ -74,8 +81,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Parse JSON request bodies
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({
+  limit: "50mb"
+}));
+
 // -------------------- Database --------------------
 connectDB();
 
@@ -120,6 +129,12 @@ app.use("/api", tripHistoryRoutes);
 app.use("/api", tripHistoryEventsRoutes);
 app.use("/api", tripHistoryEventsReplayRoutes);
 
+// 28/02/2026
+app.use("/api/gpsalerts", gpsAlertRoutes);
+app.use("/api/telemetry", telemetryRoutes);
+app.use("/api/telemetry/stats", telemetryStatsRoutes);
+app.use("/api/telemetry/dashboard", telemetryDashboardRoutes);
+
 console.log("[server] Routes mounted: ");
 
 // Health check endpoint
@@ -131,7 +146,10 @@ app.get("/health", (req, res) => {
 const server = http.createServer(app);
 
 // Start WebSocket server
-startWebSocketServer(server);
+const wss = startWebSocketServer(server);
+
+// Kick off enrichment loop with access to wss
+startEnrichmentLoop(wss);
 
 const PORT = process.env.PORT || 3005;
 server.listen(PORT, () => {
