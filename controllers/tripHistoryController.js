@@ -87,6 +87,10 @@ exports.getAllTrips = async (req, res) => {
       trip_dep_status: a.trip_dep_status,
       trip_arrival_status: a.trip_arrival_status,
       trip_actual_arrival_time: a.trip_actual_arrival_time ?? null,
+      max_speed: a.max_speed || 0,
+      avg_speed: a.avg_speed || 0,
+      total_distance: a.total_distance || 0,
+      position_name: a.position_name || null,
       __v: a.__v
     }));
 
@@ -302,6 +306,12 @@ exports.fetchRouteGeometry = async (req, res) => {
           status: trip.trip_arrival_status || "N/A",
           time: trip.trip_actual_arrival_time || null,
           notes: trip.trip_arrival_notes || ""
+        },
+        stats: {
+          max_speed: trip.max_speed || 0,
+          avg_speed: trip.avg_speed || 0,
+          total_distance: trip.total_distance || 0,
+          position_name: trip.position_name || null
         }
       }
     });

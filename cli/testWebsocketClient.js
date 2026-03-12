@@ -76,75 +76,79 @@ const ws = new WebSocket('ws://localhost:3005');
 
 // Utility to print telemetry in a readable block
 function printTelemetry(title, fields) {
-    console.log('\n========== ' + title + ' ==========');
-    for (const [key, value] of Object.entries(fields)) {
-        console.log(`${key.padEnd(12)}: ${value}`);
-    }
-    console.log('=====================================\n');
+  console.log('\n========== ' + title + ' ==========');
+  for (const [key, value] of Object.entries(fields)) {
+    console.log(`${key.padEnd(12)}: ${value}`);
+  }
+  console.log('=====================================\n');
 }
 
 ws.on('open', () => {
-    console.log('[Client] Connected to WebSocket server');
+  console.log('[Client] Connected to WebSocket server');
 
-    // --- Choose your subscription filter ---
-    // Option 1: Subscribe by vehicle only
-    const subscriptionMsg = {
-        type: 'subscribe',
-        vehicle_id: '69a6d437e348c3bcbdc46877'
-    };
+  // --- Choose your subscription filter ---
+  // Option 1: Subscribe by vehicle only
+  const subscriptionMsg = {
+    type: 'subscribe',
+    vehicle_id: '69a12bb02a25ef2a24007e1f'
+  };
 
-    // Option 2: Subscribe by vehicle + trip
-    // const subscriptionMsg = {
-    //   type: 'subscribe',
-    //   vehicle_id: 'YOUR_VEHICLE_ID_HERE',
-    //   trip_id: 'YOUR_TRIP_ID_HERE'
-    // };
+  // Option 2: Subscribe by vehicle + trip
+  // const subscriptionMsg = {
+  //   type: 'subscribe',
+  //   vehicle_id: 'YOUR_VEHICLE_ID_HERE',
+  //   trip_id: 'YOUR_TRIP_ID_HERE'
+  // };
 
-    ws.send(JSON.stringify(subscriptionMsg));
-    console.log('[Client] Sent subscription:', subscriptionMsg);
+  ws.send(JSON.stringify(subscriptionMsg));
+  console.log('[Client] Sent subscription:', subscriptionMsg);
 });
 
 ws.on('message', (msg) => {
-    try {
-        const data = JSON.parse(msg);
+  try {
+    const data = JSON.parse(msg);
 
-        if (data.type === 'live') {
-            printTelemetry(' Live Telemetry', {
-                'Vehicle ID': data.vehicle_id,
-                'Trip ID': data.trip_id || 'N/A',
-                'Session ID': data.session_id,
-                'Coordinates': data.location.coordinates.join(', '),
-                'Speed': `${data.speed} km/h`,
-                'Direction': data.direction,
-                'State': data.state,
-                'Timestamp': data.timestamp,
-                'Geofence': data.geofence_status || 'N/A'
-            });
+    if (data.type === 'live') {
+      printTelemetry(' Live Telemetry', {
+        'Vehicle ID': data.vehicle_id,
+        'Trip ID': data.trip_id || 'N/A',
+        'Session ID': data.session_id,
+        'Coordinates': data.location.coordinates.join(', '),
+        'Speed': `${data.speed} km/h`,
+        'Direction': data.direction,
+        'State': data.state,
+        'Timestamp': data.timestamp,
+        'Geofence': data.geofence_status || 'N/A',
+        'Total Distance': data.total_distance !== undefined ? `${data.total_distance} km` : 'N/A',
+        'Avg Speed': data.avg_speed !== undefined ? `${data.avg_speed} km/h` : 'N/A',
+        'Max Speed': data.max_speed !== undefined ? `${data.max_speed} km/h` : 'N/A',
+        'Position': data.position_name || 'N/A'
+      });
 
-            if (data.speed > 80) {
-                console.log(' Overspeed Alert:', data.speed, 'km/h');
-            }
-            if (data.geofence_status === 'OUTSIDE') {
-                console.log(' Geofence Alert: Vehicle exited geofence');
-            }
-        } else if (data.type === 'replay') {
-            printTelemetry(' Replay Telemetry', {
-                'Vehicle ID': data.vehicle_id,
-                'Trip ID': data.trip_id || 'N/A',
-                'Session ID': data.session_id,
-                'Coordinates': data.coordinates.join(', '),
-                'Speed': `${data.speed} km/h`,
-                'Direction': data.direction,
-                'State': data.state,
-                'Timestamp': data.timestamp,
-                'Geofence': data.geofence_status || 'N/A'
-            });
-        } else if (data.error) {
-            console.error('[Error from server]', data.error);
-        }
-    } catch (err) {
-        console.error('[Client] Failed to parse message:', err.message);
+      if (data.speed > 80) {
+        console.log(' Overspeed Alert:', data.speed, 'km/h');
+      }
+      if (data.geofence_status === 'OUTSIDE') {
+        console.log(' Geofence Alert: Vehicle exited geofence');
+      }
+    } else if (data.type === 'replay') {
+      printTelemetry(' Replay Telemetry', {
+        'Vehicle ID': data.vehicle_id,
+        'Trip ID': data.trip_id || 'N/A',
+        'Session ID': data.session_id,
+        'Coordinates': data.coordinates.join(', '),
+        'Speed': `${data.speed} km/h`,
+        'Direction': data.direction,
+        'State': data.state,
+        'Timestamp': data.timestamp,
+        'Geofence': data.geofence_status || 'N/A'
+      });
+    } else if (data.error) {
+      console.error('[Error from server]', data.error);
     }
+  } catch (err) {
+    console.error('[Client] Failed to parse message:', err.message);
+  }
 });
 
 ws.on('close', () => console.log('[Client] Connection closed'));

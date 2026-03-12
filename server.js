@@ -17,6 +17,7 @@ const connectDB = require("./config/db"); // Import DB connection
 const http = require("http");
 //const startWebSocketServer = require("./services/wsServer");
 const { startWebSocketServer } = require("./services/wsServer");
+const { startEnrichmentLoop } = require("./workers/enrichmentWorker");  // 7 March 2026
 
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const platformTenantRoutes = require("./routes/platformTenantRoutes");
@@ -52,7 +53,6 @@ const gpsAlertRoutes = require("./routes/gpsAlertRoutes");
 const telemetryRoutes = require("./routes/telemetryRoutes");
 const telemetryStatsRoutes = require("./routes/telemetryStatsRoutes");
 const telemetryDashboardRoutes = require("./routes/telemetryDashboardRoutes");
-const { startEnrichmentLoop } = require("./workers/enrichmentWorker");
 
 // Import health check job
 require("./jobs/deviceHealthCheck");
@@ -81,8 +81,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Parse JSON request bodies
-app.use(bodyParser.json());
+app.use(express.json({
+  limit: "50mb"
+}));
 
 // -------------------- Database --------------------
 connectDB();

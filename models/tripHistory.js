@@ -17,8 +17,11 @@ const tripHistorySchema = new mongoose.Schema({
   departure_time: Date,
   arrival_time: Date,
   trip_arrival_status: { type: String, enum: ["INTIME", "ONTIME", "DELAYED"], required: true },
-  trip_actual_arrival_time: Date,
   trip_arrival_notes: String,
+  max_speed: { type: Number, default: 0 },
+  avg_speed: { type: Number, default: 0 },
+  total_distance: { type: Number, default: 0 },
+  position_name: { type: String, default: null },
 
   // Snapshot metadata
   assignment_desc: String,

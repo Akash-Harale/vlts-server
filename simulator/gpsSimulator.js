@@ -18,8 +18,8 @@ const devices = [
 function generateTelemetry(device) {
     return {
         imei: device.imei,
-        lat: device.lat + (Math.random() - 0.5) * 0.01,   // jitter latitude
-        lon: device.lon + (Math.random() - 0.5) * 0.01,   // jitter longitude
+        lat: device.lat + (Math.random() - 0.5) * 1.11,   // jitter latitude
+        lon: device.lon + (Math.random() - 0.5) * 1.01,   // jitter longitude
         speed: Math.floor(Math.random() * 80),            // random speed 0–80
         direction: Math.floor(Math.random() * 360)        // random direction
     };
