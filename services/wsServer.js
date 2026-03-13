@@ -145,12 +145,14 @@ async function handleReplay(ws, data) {
       vehicle_id: point.vehicle_id,
       trip_id: point.trip_id,
       session_id: point.session_id,
-      coordinates: point.location.coordinates,
+      location: { type: 'Point', coordinates: point.location.coordinates },
       speed: point.speed,
       direction: point.direction,
       state: point.state,
       timestamp: point.timestamp,
-      geofence_status: geofenceStatus
+      position_name: point.position_name,
+      geofence_status: geofenceStatus,
+      overspeed_count: point.overspeed_count || 0
     };
 
     console.log(' Sending replay payload:', payload);

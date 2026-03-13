@@ -22,6 +22,8 @@ const telemetrySchema = new mongoose.Schema({
     avg_speed: { type: Number, default: 0 },
     total_distance: { type: Number, default: 0 },  // in km
     position_name: { type: String, default: 'Unknown' },
+    overspeed_count: { type: Number, default: 0 },
+    geofence_crossing_count: { type: Number, default: 0 },
     raw_payload: Object
 });
 

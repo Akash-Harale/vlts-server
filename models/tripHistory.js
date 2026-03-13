@@ -22,6 +22,7 @@ const tripHistorySchema = new mongoose.Schema({
   avg_speed: { type: Number, default: 0 },
   total_distance: { type: Number, default: 0 },
   position_name: { type: String, default: null },
+  overspeed_count: { type: Number, default: 0 },
 
   // Snapshot metadata
   assignment_desc: String,
