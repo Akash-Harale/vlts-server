@@ -147,10 +147,60 @@ function getPositionName(lat, lon) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// 6. Get total number of overspeeding events for the current session
+// ---------------------------------------------------------------------------
+async function getOverspeedCount(sessionId, currentSpeed, overspeedLimit) {
+    try {
+        const result = await Telemetry.findOne(
+            { session_id: sessionId },
+            { overspeed_count: 1 },
+            { sort: { timestamp: -1 } }
+        );
+        
+        const previousCount = result ? (result.overspeed_count || 0) : 0;
+        return currentSpeed > overspeedLimit ? previousCount + 1 : previousCount;
+    } catch (err) {
+        console.error('[telemetryUtils] getOverspeedCount error:', err.message);
+        return 0;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 7. Get total number of geofence crossing events for the current session
+//    Increments when geofence_status changes (e.g., WITHIN -> OUTSIDE)
+// ---------------------------------------------------------------------------
+async function getGeofenceCrossingCount(sessionId, currentStatus) {
+    try {
+        const result = await Telemetry.findOne(
+            { session_id: sessionId },
+            { geofence_status: 1, geofence_crossing_count: 1 },
+            { sort: { timestamp: -1 } }
+        );
+
+        if (!result) return 0; // First packet in session
+
+        const previousStatus = result.geofence_status;
+        const previousCount = result.geofence_crossing_count || 0;
+
+        // If status changed (and neither is UNKNOWN), increment count
+        const hasChanged = previousStatus !== currentStatus && 
+                          previousStatus !== "UNKNOWN" && 
+                          currentStatus !== "UNKNOWN";
+
+        return hasChanged ? previousCount + 1 : previousCount;
+    } catch (err) {
+        console.error('[telemetryUtils] getGeofenceCrossingCount error:', err.message);
+        return 0;
+    }
+}
+
 module.exports = {
     haversineDistance,
     getMaxSpeed,
     getAvgSpeed,
     getTotalDistance,
-    getPositionName
+    getPositionName,
+    getOverspeedCount,
+    getGeofenceCrossingCount
 };

@@ -16,7 +16,7 @@ const turf = require('@turf/turf');
 const telemetryUtils = require('../utils/telemetryUtils');
 
 const activeSessions = new Map();
-const OVERSPEED_LIMIT = process.env.OVERSPEED_LIMIT || 80;
+const OVERSPEED_LIMIT = process.env.OVERSPEED_LIMIT || 1;
 const POLL_INTERVAL_MS = process.env.POLL_INTERVAL_MS || 2000;
 
 // -------------------- Helpers --------------------
@@ -116,6 +116,8 @@ function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, s
     const avgSpeed = await telemetryUtils.getAvgSpeed(sessionId, rawDoc.raw_payload.speed);
     const totalDistance = await telemetryUtils.getTotalDistance(sessionId, locationPoint.coordinates);
     const positionName = await telemetryUtils.getPositionName(rawDoc.raw_payload.lat, rawDoc.raw_payload.lon);
+    const overspeedCount = await telemetryUtils.getOverspeedCount(sessionId, rawDoc.raw_payload.speed, OVERSPEED_LIMIT);
+    const geofenceCrossingCount = await telemetryUtils.getGeofenceCrossingCount(sessionId, geofenceStatus);
 
     return new Telemetry({
       session_id: sessionId,
@@ -135,6 +137,8 @@ function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, s
       avg_speed: avgSpeed,
       total_distance: totalDistance,
       position_name: positionName,
+      overspeed_count: overspeedCount,
+      geofence_crossing_count: geofenceCrossingCount,
       raw_payload: rawDoc.raw_payload
     });
   })();
@@ -201,6 +205,23 @@ async function processRawPackets(wss) {
       if (telemetry) { // Process only if telemetry daata found
         await telemetry.save();
         await GPSRawData.updateOne({ _id: rawDoc._id }, { processed: true });
+
+        // Update active Trip with latest stats for real-time dashboard updates
+        if (tripId) {
+          await Trip.updateOne(
+            { _id: tripId },
+            {
+              $set: {
+                max_speed: telemetry.max_speed,
+                avg_speed: telemetry.avg_speed,
+                total_distance: telemetry.total_distance,
+                position_name: telemetry.position_name,
+                overspeed_count: telemetry.overspeed_count,
+                geofence_crossing_count: telemetry.geofence_crossing_count
+              }
+            }
+          );
+        }
 
         broadcastTelemetry(wss, telemetry);
 

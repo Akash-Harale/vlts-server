@@ -249,9 +249,9 @@ exports.fetchTrips = async (req, res) => {
       trip_arrival_status: a.trip_arrival_status,
       trip_actual_arrival_time: a.trip_actual_arrival_time ?? null,
       max_speed: a.max_speed || 0,
-      avg_speed: a.avg_speed || 0,
       total_distance: a.total_distance || 0,
       position_name: a.position_name || null,
+      overspeed_count: a.overspeed_count || 0,
       __v: a.__v
     }));
 
@@ -341,9 +341,9 @@ exports.fetchTripsByVehicle = async (req, res) => {
       trip_arrival_status: a.trip_arrival_status ?? null,
       trip_actual_arrival_time: a.trip_actual_arrival_time ?? null,
       max_speed: a.max_speed || 0,
-      avg_speed: a.avg_speed || 0,
       total_distance: a.total_distance || 0,
       position_name: a.position_name || null,
+      overspeed_count: a.overspeed_count || 0,
       __v: a.__v
     }));
 
@@ -435,7 +435,9 @@ exports.fetchRouteGeometry = async (req, res) => {
           max_speed: trip.max_speed || 0,
           avg_speed: trip.avg_speed || 0,
           total_distance: trip.total_distance || 0,
-          position_name: trip.position_name || null
+          position_name: trip.position_name || null,
+          overspeed_count: trip.overspeed_count || 0,
+          geofence_crossing_count: trip.geofence_crossing_count || 0
         }
       }
     });
@@ -521,6 +523,8 @@ exports.fetchTripsByStatus = async (req, res) => {
         avg_speed: a.avg_speed || 0,
         total_distance: a.total_distance || 0,
         position_name: a.position_name || null,
+        overspeed_count: a.overspeed_count || 0,
+        geofence_crossing_count: a.geofence_crossing_count || 0,
         trip_approval_status: a.trip_approval_status,
         trip_dep_status: a.trip_dep_status,
         trip_arrival_status: a.trip_arrival_status,
