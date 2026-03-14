@@ -1,7 +1,6 @@
-// Date: 7th March 2026 
-// used for POC by direct call from server.js
-
 // workers/enrichmentWorker.js
+// Date: March 2026 - POC version with geofence fix
+
 const GPSRawData = require('../models/gpsRawData');
 const GPSDevice = require('../models/gpsDevice');
 const Vehicle = require('../models/vehicle');
@@ -10,16 +9,17 @@ const DriverVehicleAssignment = require('../models/driverVehicleAssignment');
 const Trip = require('../models/trip');
 const Telemetry = require('../models/telemetry');
 const GpsAlert = require('../models/gpsAlert');
+const Geofence = require('../models/geofence');
 const { v4: uuidv4 } = require('uuid');
 const { broadcastTelemetry } = require('../services/wsServer');
 const turf = require('@turf/turf');
 const telemetryUtils = require('../utils/telemetryUtils');
 
 const activeSessions = new Map();
-const OVERSPEED_LIMIT = process.env.OVERSPEED_LIMIT || 1;
-const POLL_INTERVAL_MS = process.env.POLL_INTERVAL_MS || 2000;
+const OVERSPEED_LIMIT = Number(process.env.OVERSPEED_LIMIT) || 1;
+const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 2000;
 
-// -------------------- Helpers --------------------
+// ── Helpers ────────────────────────────────────────────────
 
 async function resolveDevice(rawDoc) {
   const gpsDevice = await GPSDevice.findOne({ imei: rawDoc.imei }).lean();
@@ -34,21 +34,21 @@ async function resolveVehicle(gpsDevice, rawDoc) {
   const mapping = await VehicleDeviceMap.findOne({
     gps_device_id: gpsDevice._id,
     status: 'MAPPED'
-    //}).lean();
-  }).populate('vehicle_id', 'registration_number make model').lean();
+  })
+    .populate('vehicle_id', 'registration_number make model')
+    .lean();
+
   if (!mapping) {
     await GPSRawData.updateOne({ _id: rawDoc._id }, { error: 'No active vehicle mapping' });
     return null;
   }
 
-  //console.log("Vehicle mapping result:", mapping);
-  //console.log("Populated vehicle:", mapping?.vehicle_id);
-
-  return mapping.vehicle_id; // plain object
+  return mapping.vehicle_id;
 }
 
 async function resolveTripAndDriver(vehicle) {
   const now = new Date();
+
   const activeTrip = await Trip.findOne({
     vehicle_id: vehicle._id,
     status: 'ACTIVE',
@@ -72,7 +72,7 @@ async function resolveTripAndDriver(vehicle) {
   }).lean();
 
   return {
-    driverId: assignment ? assignment.driver_id : null,
+    driverId: assignment?.driver_id || null,
     routeId: null,
     tripId: null
   };
@@ -80,171 +80,233 @@ async function resolveTripAndDriver(vehicle) {
 
 function getOrCreateSession(vehicleId) {
   const vidStr = vehicleId.toString();
-  let sessionId = activeSessions.get(vidStr);
-  if (!sessionId) {
-    sessionId = uuidv4();
+  if (!activeSessions.has(vidStr)) {
+    const sessionId = uuidv4();
     activeSessions.set(vidStr, sessionId);
-    console.log(`[enrichmentWorker] New session started for vehicle ${vidStr}: ${sessionId}`);
+    console.log(`[enrichment] New session for vehicle ${vidStr}: ${sessionId}`);
   }
-  return sessionId;
+  return activeSessions.get(vidStr);
 }
 
-function checkGeofence(vehicle, locationPoint) {
-  if (!vehicle.geofencePolygon || !vehicle.geofencePolygon.coordinates) return "UNKNOWN";
+// ── Geofence check ─────────────────────────────────────────
+
+async function checkGeofence(routeId, locationPoint) {
+  if (!routeId) return 'UNKNOWN';
+
   try {
-    const polygon = turf.polygon(vehicle.geofencePolygon.coordinates);
+    const geofence = await Geofence.findOne({ route_id: routeId }).lean();
+    if (!geofence?.geometry?.coordinates) return 'UNKNOWN';
+
+    const polygon = turf.polygon(geofence.geometry.coordinates);
     const point = turf.point(locationPoint.coordinates);
-    return turf.booleanPointInPolygon(point, polygon) ? "WITHIN" : "OUTSIDE";
+
+    return turf.booleanPointInPolygon(point, polygon) ? 'WITHIN' : 'OUTSIDE';
   } catch (err) {
-    console.error("[enrichmentWorker] Geofence check error:", err.message);
-    return "ERROR";
+    console.error('[enrichment] Geofence check failed:', err.message);
+    return 'ERROR';
   }
 }
 
-function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, sessionId) {
-  // Return a promise to handle async utility functions
-  return (async () => {
-    const locationPoint = {
-      type: 'Point',
-      coordinates: [rawDoc.raw_payload.lon, rawDoc.raw_payload.lat]
-    };
+// ── Build enriched telemetry document ──────────────────────
 
-    const geofenceStatus = checkGeofence(vehicle, locationPoint);
+async function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, sessionId) {
+  const locationPoint = {
+    type: 'Point',
+    coordinates: [rawDoc.raw_payload.lon, rawDoc.raw_payload.lat]
+  };
 
-    // Calculate derived metrics
-    const maxSpeed = await telemetryUtils.getMaxSpeed(sessionId, rawDoc.raw_payload.speed);
-    const avgSpeed = await telemetryUtils.getAvgSpeed(sessionId, rawDoc.raw_payload.speed);
-    const totalDistance = await telemetryUtils.getTotalDistance(sessionId, locationPoint.coordinates);
-    const positionName = await telemetryUtils.getPositionName(rawDoc.raw_payload.lat, rawDoc.raw_payload.lon);
-    const overspeedCount = await telemetryUtils.getOverspeedCount(sessionId, rawDoc.raw_payload.speed, OVERSPEED_LIMIT);
-    const geofenceCrossingCount = await telemetryUtils.getGeofenceCrossingCount(sessionId, geofenceStatus);
+  // last_updated is the timestamp from the device payload itself (sending time)
+  const lastUpdated = rawDoc.raw_payload.timestamp
+    ? new Date(rawDoc.raw_payload.timestamp)
+    : new Date();
 
-    return new Telemetry({
-      session_id: sessionId,
-      timestamp: new Date(),
-      imei: rawDoc.imei,
-      gps_device_id: gpsDevice._id,
-      vehicle_id: vehicle._id,
-      driver_id: driverId,
-      route_id: routeId,
-      trip_id: tripId,
-      location: locationPoint,
-      speed: rawDoc.raw_payload.speed,
-      direction: rawDoc.raw_payload.direction,
-      state: rawDoc.raw_payload.speed > 5 ? 'MOVING' : 'PARKED',
-      geofence_status: geofenceStatus,
-      max_speed: maxSpeed,
-      avg_speed: avgSpeed,
-      total_distance: totalDistance,
-      position_name: positionName,
-      overspeed_count: overspeedCount,
-      geofence_crossing_count: geofenceCrossingCount,
-      raw_payload: rawDoc.raw_payload
-    });
-  })();
+  const vehicleState = rawDoc.raw_payload.speed > 5 ? 'MOVING' : 'PARKED';
+
+  const geofenceStatus = await checkGeofence(routeId, locationPoint);
+  const finalGeofenceStatus = geofenceStatus ?? 'UNKNOWN';
+
+  const [
+    maxSpeed,
+    avgSpeed,
+    totalDistance,
+    positionName,
+    overspeedCount,
+    geofenceCrossingCount,
+    { run_time_minutes, idle_time_minutes }
+  ] = await Promise.all([
+    telemetryUtils.getMaxSpeed(sessionId, rawDoc.raw_payload.speed),
+    telemetryUtils.getAvgSpeed(sessionId, rawDoc.raw_payload.speed),
+    telemetryUtils.getTotalDistance(sessionId, locationPoint.coordinates),
+    telemetryUtils.getPositionName(rawDoc.raw_payload.lat, rawDoc.raw_payload.lon),
+    telemetryUtils.getOverspeedCount(sessionId, rawDoc.raw_payload.speed, OVERSPEED_LIMIT),
+    telemetryUtils.getGeofenceCrossingCount(sessionId, finalGeofenceStatus),
+    // Pass the packet's own timestamp so run/idle are calculated against the
+    // correct "now", not the server wall-clock time.
+    telemetryUtils.getRunIdleTime(sessionId, lastUpdated, vehicleState)
+  ]);
+
+  return new Telemetry({
+    session_id: sessionId,
+
+    // ── Time fields ───────────────────────────────────────
+    timestamp: new Date(),          // server ingestion time
+    last_updated: lastUpdated,      // device sending time (from raw payload)
+
+    // ── Identity ──────────────────────────────────────────
+    imei: rawDoc.imei,
+    gps_device_id: gpsDevice._id,
+    vehicle_id: vehicle._id,
+    driver_id: driverId,
+    route_id: routeId,
+    trip_id: tripId,
+
+    // ── Position & motion ─────────────────────────────────
+    location: locationPoint,
+    speed: rawDoc.raw_payload.speed,
+    direction: rawDoc.raw_payload.direction,
+    state: vehicleState,
+    position_name: positionName,
+
+    // ── Session-level aggregates ──────────────────────────
+    max_speed: maxSpeed,
+    avg_speed: avgSpeed,
+    total_distance: totalDistance,
+    overspeed_count: overspeedCount,
+
+    // ── Daily run / idle times (since 12:00 AM) ───────────
+    run_time_minutes,   // minutes vehicle was MOVING since midnight
+    idle_time_minutes,  // minutes vehicle was PARKED/idle since midnight
+
+    // ── Geofence ──────────────────────────────────────────
+    geofence_status: finalGeofenceStatus,
+    geofence_crossing_count: geofenceCrossingCount,
+
+    // ── Raw data ──────────────────────────────────────────
+    raw_payload: rawDoc.raw_payload
+  });
 }
 
-// -------------------- Alert Logic --------------------
+// ── Alerting logic ──────────────────────────────────────────
+
 async function triggerAlerts(telemetry) {
   const alerts = [];
 
   if (telemetry.speed > OVERSPEED_LIMIT) {
     alerts.push({
-      type: "OVERSPEED",
+      type: 'OVERSPEED',
       message: `Vehicle ${telemetry.vehicle_id} overspeeding at ${telemetry.speed} km/h`,
       vehicle_id: telemetry.vehicle_id,
       telemetry_id: telemetry._id,
       timestamp: telemetry.timestamp,
-      severity: "CRITICAL"
+      severity: 'CRITICAL'
     });
   }
 
-  if (telemetry.geofence_status === "OUTSIDE") {
+  if (telemetry.geofence_status === 'OUTSIDE') {
     alerts.push({
-      type: "GEOFENCE",
+      type: 'GEOFENCE',
       message: `Vehicle ${telemetry.vehicle_id} exited geofence`,
       vehicle_id: telemetry.vehicle_id,
       telemetry_id: telemetry._id,
       timestamp: telemetry.timestamp,
-      severity: "WARNING"
+      severity: 'WARNING'
     });
   }
 
   if (alerts.length > 0) {
     await GpsAlert.insertMany(alerts);
-    alerts.forEach(alert => console.log("[enrichmentWorker] GpsAlert triggered:", alert.message));
+    alerts.forEach(a => console.log('[enrichment] Alert:', a.message));
   }
 }
 
-// -------------------- Main Processor --------------------
+// ── Main processing loop ───────────────────────────────────
+
 async function processRawPackets(wss) {
-  const rawDocs = await GPSRawData.find({ processed: false }).limit(10).lean();
- console.log("rawDocs", rawDocs)
-  //console.log('processRawPackets called....: ');
+  const rawDocs = await GPSRawData.find({ processed: false })
+    .limit(10)
+    .lean()
+    .sort({ timestamp: 1 });
+
+  if (!rawDocs.length) return;
+
+  console.log(`[enrichment] Processing ${rawDocs.length} raw packets`);
 
   for (const rawDoc of rawDocs) {
     try {
       const gpsDevice = await resolveDevice(rawDoc);
       if (!gpsDevice) continue;
 
-      //console.log('gpsDevice Line# 166: rawDoc: ', rawDoc, ' : gpsDevice: ', gpsDevice);
-
       const vehicle = await resolveVehicle(gpsDevice, rawDoc);
-      //console.log('Vehicle Line# 169: ', vehicle);
-
       if (!vehicle) continue;
 
       const { driverId, routeId, tripId } = await resolveTripAndDriver(vehicle);
       const sessionId = getOrCreateSession(vehicle._id);
 
-      //console.log(' Line# 176: ', vehicle);
+      const telemetryDoc = await buildTelemetry(
+        rawDoc,
+        gpsDevice,
+        vehicle,
+        driverId,
+        routeId,
+        tripId,
+        sessionId
+      );
 
-      const telemetry = await buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, sessionId);
+      // Debug log
+      console.log(
+        `[DEBUG] vehicle ${vehicle._id} → geofence_status=${telemetryDoc.geofence_status}` +
+        ` | state=${telemetryDoc.state}` +
+        ` | run=${telemetryDoc.run_time_minutes}min | idle=${telemetryDoc.idle_time_minutes}min` +
+        ` | last_updated=${telemetryDoc.last_updated}`
+      );
 
+      await telemetryDoc.save();
+      await GPSRawData.updateOne({ _id: rawDoc._id }, { processed: true });
 
-      if (telemetry) { // Process only if telemetry daata found
-        await telemetry.save();
-        await GPSRawData.updateOne({ _id: rawDoc._id }, { processed: true });
-
-        // Update active Trip with latest stats for real-time dashboard updates
-        if (tripId) {
-          await Trip.updateOne(
-            { _id: tripId },
-            {
-              $set: {
-                max_speed: telemetry.max_speed,
-                avg_speed: telemetry.avg_speed,
-                total_distance: telemetry.total_distance,
-                position_name: telemetry.position_name,
-                overspeed_count: telemetry.overspeed_count,
-                geofence_crossing_count: telemetry.geofence_crossing_count
-              }
+      // Update trip stats if applicable
+      if (tripId) {
+        await Trip.updateOne(
+          { _id: tripId },
+          {
+            $set: {
+              max_speed: telemetryDoc.max_speed,
+              avg_speed: telemetryDoc.avg_speed,
+              total_distance: telemetryDoc.total_distance,
+              position_name: telemetryDoc.position_name,
+              overspeed_count: telemetryDoc.overspeed_count,
+              geofence_crossing_count: telemetryDoc.geofence_crossing_count,
+              run_time_minutes: telemetryDoc.run_time_minutes,
+              idle_time_minutes: telemetryDoc.idle_time_minutes
             }
-          );
-        }
-
-        broadcastTelemetry(wss, telemetry);
-
-        await triggerAlerts(telemetry);
-        console.log("[enrichmentWorker] Telemetry saved, broadcasted and alert triggered:", telemetry.id);
-      } else {
-        console.log('processRawPackets: No telemetry data found, Nothing to broadcast');
+          }
+        );
       }
+
+      broadcastTelemetry(wss, telemetryDoc);
+      await triggerAlerts(telemetryDoc);
+
+      console.log(`[enrichment] Saved & broadcasted: ${telemetryDoc._id}`);
     } catch (err) {
-      console.error("[enrichmentWorker] Error enriching packet:", err.message);
+      console.error('[enrichment] Error processing packet:', err.message, err.stack);
     }
   }
 }
 
-// -------------------- Continuous Loop --------------------
+// ── Continuous polling ─────────────────────────────────────
+
 function startEnrichmentLoop(wss) {
-  console.log('startEnrichmentLoop called....');
+  console.log('[enrichment] Starting processing loop...');
+
   async function loop() {
-    await processRawPackets(wss);
+    try {
+      await processRawPackets(wss);
+    } catch (err) {
+      console.error('[enrichment] Loop crash:', err);
+    }
     setTimeout(loop, POLL_INTERVAL_MS);
   }
+
   loop();
 }
 
 module.exports = { startEnrichmentLoop };
-//module.exports = { processRawPackets };
