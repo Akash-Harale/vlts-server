@@ -8,7 +8,7 @@ const Telemetry = require('../models/telemetry');
 // 1. Haversine distance between two [lon, lat] coordinate pairs (in km)
 // ---------------------------------------------------------------------------
 function haversineDistance([lon1, lat1], [lon2, lat2]) {
-    const R = 6371; // Earth radius in km
+    const R = 6371;
     const toRad = (deg) => (deg * Math.PI) / 180;
 
     const dLat = toRad(lat2 - lat1);
@@ -21,8 +21,7 @@ function haversineDistance([lon1, lat1], [lon2, lat2]) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Get maximum speed (km/h) for the current session from saved telemetry
-//    plus the new (unsaved) speed reading
+// 2. Get maximum speed (km/h) for the current session
 // ---------------------------------------------------------------------------
 async function getMaxSpeed(sessionId, currentSpeed) {
     try {
@@ -41,7 +40,6 @@ async function getMaxSpeed(sessionId, currentSpeed) {
 
 // ---------------------------------------------------------------------------
 // 3. Get average speed (km/h) for the current session
-//    We recalculate as running average across all saved records + current
 // ---------------------------------------------------------------------------
 async function getAvgSpeed(sessionId, currentSpeed) {
     try {
@@ -63,8 +61,6 @@ async function getAvgSpeed(sessionId, currentSpeed) {
 
 // ---------------------------------------------------------------------------
 // 4. Get total distance travelled (km) for the current session
-//    Sums Haversine distances between consecutive coordinate points,
-//    then adds the leg from the last saved point to the current one
 // ---------------------------------------------------------------------------
 async function getTotalDistance(sessionId, currentCoords) {
     try {
@@ -79,18 +75,14 @@ async function getTotalDistance(sessionId, currentCoords) {
 
         let totalKm = 0;
 
-        // Sum distance across saved points
         for (let i = 1; i < records.length; i++) {
             const prev = records[i - 1].location.coordinates;
             const curr = records[i].location.coordinates;
             totalKm += haversineDistance(prev, curr);
         }
 
-        // Add leg from last saved point to current position
         const lastCoords = records[records.length - 1].location.coordinates;
         totalKm += haversineDistance(lastCoords, currentCoords);
-
-        console.log(`[telemetryUtils] getTotalDistance -> session: ${sessionId}, records: ${records.length}, totalKm computed so far: ${totalKm}`);
 
         return parseFloat(totalKm.toFixed(3));
     } catch (err) {
@@ -101,7 +93,6 @@ async function getTotalDistance(sessionId, currentCoords) {
 
 // ---------------------------------------------------------------------------
 // 5. Reverse-geocode coordinates using OpenStreetMap Nominatim
-//    Returns a human-readable place name string
 // ---------------------------------------------------------------------------
 function getPositionName(lat, lon) {
     return new Promise((resolve) => {
@@ -123,7 +114,6 @@ function getPositionName(lat, lon) {
                 res.on('end', () => {
                     try {
                         const json = JSON.parse(data);
-                        // Build a concise place name from address parts
                         const addr = json.address || {};
                         const parts = [
                             addr.road || addr.pedestrian || addr.footway,
@@ -157,7 +147,7 @@ async function getOverspeedCount(sessionId, currentSpeed, overspeedLimit) {
             { overspeed_count: 1 },
             { sort: { timestamp: -1 } }
         );
-        
+
         const previousCount = result ? (result.overspeed_count || 0) : 0;
         return currentSpeed > overspeedLimit ? previousCount + 1 : previousCount;
     } catch (err) {
@@ -168,7 +158,6 @@ async function getOverspeedCount(sessionId, currentSpeed, overspeedLimit) {
 
 // ---------------------------------------------------------------------------
 // 7. Get total number of geofence crossing events for the current session
-//    Increments when geofence_status changes (e.g., WITHIN -> OUTSIDE)
 // ---------------------------------------------------------------------------
 async function getGeofenceCrossingCount(sessionId, currentStatus) {
     try {
@@ -178,20 +167,94 @@ async function getGeofenceCrossingCount(sessionId, currentStatus) {
             { sort: { timestamp: -1 } }
         );
 
-        if (!result) return 0; // First packet in session
+        if (!result) return 0;
 
         const previousStatus = result.geofence_status;
         const previousCount = result.geofence_crossing_count || 0;
 
-        // If status changed (and neither is UNKNOWN), increment count
-        const hasChanged = previousStatus !== currentStatus && 
-                          previousStatus !== "UNKNOWN" && 
-                          currentStatus !== "UNKNOWN";
+        const hasChanged =
+            previousStatus !== currentStatus &&
+            previousStatus !== 'UNKNOWN' &&
+            currentStatus !== 'UNKNOWN';
 
         return hasChanged ? previousCount + 1 : previousCount;
     } catch (err) {
         console.error('[telemetryUtils] getGeofenceCrossingCount error:', err.message);
         return 0;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 8. Calculate run time and idle time (in minutes) since 12:00 AM today
+//
+//    Logic:
+//    - Fetch all telemetry records for this session from midnight onwards,
+//      sorted by timestamp ascending.
+//    - Walk consecutive pairs of records. For each interval [t_prev → t_curr]:
+//        • if the vehicle state at t_prev was MOVING  → add interval to run_time
+//        • if the vehicle state at t_prev was PARKED  → add interval to idle_time
+//    - Also account for the open interval from the last saved record up to
+//      the current packet timestamp using the current state.
+//
+//    Example:
+//      1:00 AM  MOVING  →  3:00 PM  (ran for 14 h = 840 min)  → covered 50 km
+//      3:00 PM  PARKED  →  6:00 PM  (idle for 3 h = 180 min)   (current time)
+//      Total since midnight:  run = 840 min, idle = 180 min
+// ---------------------------------------------------------------------------
+async function getRunIdleTime(sessionId, currentTimestamp, currentState) {
+    try {
+        // Midnight of the current day (local time anchored to UTC midnight)
+        const midnight = new Date(currentTimestamp);
+        midnight.setHours(0, 0, 0, 0);
+
+        const records = await Telemetry.find(
+            {
+                session_id: sessionId,
+                timestamp: { $gte: midnight }
+            },
+            { timestamp: 1, state: 1 }
+        )
+            .sort({ timestamp: 1 })
+            .lean();
+
+        let runMinutes = 0;
+        let idleMinutes = 0;
+
+        // Helper: accumulate an interval into the correct bucket
+        const accumulate = (state, fromMs, toMs) => {
+            const diffMin = (toMs - fromMs) / 60000;
+            if (diffMin <= 0) return;
+            if (state === 'MOVING') {
+                runMinutes += diffMin;
+            } else {
+                // PARKED or any other state counts as idle
+                idleMinutes += diffMin;
+            }
+        };
+
+        if (records.length === 0) {
+            // No prior records today — the entire interval from midnight to now
+            // is assumed idle (vehicle hasn't been seen yet)
+            accumulate(currentState, midnight.getTime(), currentTimestamp.getTime());
+        } else {
+            // Walk saved records
+            for (let i = 1; i < records.length; i++) {
+                const prev = records[i - 1];
+                accumulate(prev.state, new Date(prev.timestamp).getTime(), new Date(records[i].timestamp).getTime());
+            }
+
+            // Open interval: last saved record → current packet
+            const last = records[records.length - 1];
+            accumulate(last.state, new Date(last.timestamp).getTime(), currentTimestamp.getTime());
+        }
+
+        return {
+            run_time_minutes: parseFloat(runMinutes.toFixed(2)),
+            idle_time_minutes: parseFloat(idleMinutes.toFixed(2))
+        };
+    } catch (err) {
+        console.error('[telemetryUtils] getRunIdleTime error:', err.message);
+        return { run_time_minutes: 0, idle_time_minutes: 0 };
     }
 }
 
@@ -202,5 +265,6 @@ module.exports = {
     getTotalDistance,
     getPositionName,
     getOverspeedCount,
-    getGeofenceCrossingCount
+    getGeofenceCrossingCount,
+    getRunIdleTime
 };
