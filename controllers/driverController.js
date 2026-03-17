@@ -19,7 +19,14 @@ exports.createDriver = async (req, res) => {
     await driver.save();
 
     // Step 2: Create User mapped to Driver
-    const user = new User({ user_id, password, driver_id: driver._id });
+    const user = new User({ 
+      user_id, 
+      password, 
+      driver_id: driver._id,
+      tenant_id: req.user.tenant_id,
+      client_id: req.user.role === 'tenant_user' ? req.user.client_id : req.body.client_id,
+      role: 'driver' // or find driver role ID
+    });
     await user.save();
 
     res.status(201).json({
@@ -32,10 +39,22 @@ exports.createDriver = async (req, res) => {
   }
 };
 
-// READ All Drivers
+// READ All Drivers (Filtered by Tenant/Client)
 exports.getAllDrivers = async (req, res) => {
   try {
-    const drivers = await Driver.find();
+    const userQuery = { tenant_id: req.user.tenant_id };
+    const explicitClientId = req.query.client_id;
+    
+    if (explicitClientId) {
+      userQuery.client_id = explicitClientId;
+    } else if (req.user.role === 'tenant_user') {
+      userQuery.client_id = req.user.client_id;
+    }
+
+    const tenantUsers = await User.find(userQuery).select('driver_id');
+    const tenantDriverIds = tenantUsers.map(u => u.driver_id).filter(id => id);
+
+    const drivers = await Driver.find({ _id: { $in: tenantDriverIds } });
     res.json(drivers);
   } catch (err) {
     res.status(500).json({ error: err.message });

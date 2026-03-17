@@ -231,10 +231,23 @@ exports.fetchTrips = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
 
+    const vehicleQuery = { tenant_id: req.user.tenant_id };
+    const explicitClientId = req.query.client_id;
+    
+    if (explicitClientId) {
+      vehicleQuery.client_id = explicitClientId;
+    } else if (req.user.role === "tenant_user") {
+      vehicleQuery.client_id = req.user.client_id;
+    }
+
+    const vehicles = await Vehicle.find(vehicleQuery).select("_id");
+    const vehicleIds = vehicles.map(v => v._id);
+
     const query = {
       status: "ACTIVE",
       trip_dep_status: "DEPARTED",
-      trip_arrival_status: "AWAITED"
+      trip_arrival_status: "AWAITED",
+      vehicle_id: { $in: vehicleIds }
     };
 
     // Get total count first 
@@ -252,14 +265,14 @@ exports.fetchTrips = async (req, res) => {
     const data = assignments.map(a => ({
       trip_id: a._id,
       vehicle_id: a.vehicle_id,
-      registration_number: a.registration_number,
-      make: a.make,
-      model: a.model,
+      registration_number: a.vehicle_id?.registration_number,
+      make: a.vehicle_id?.make,
+      model: a.vehicle_id?.model,
       route_id: a.route_id,
-      route_name: a.name,
+      route_name: a.route_id?.name,
       driver_id: a.driver_id,
-      driver_name: a.driver_name,
-      mobile_number: a.mobile_number,
+      driver_name: a.driver_id?.driver_name,
+      mobile_number: a.driver_id?.mobile_number,
       departure_time: a.departure_time ?? null,
       arrival_time: a.arrival_time ?? null,
       assignment_desc: a.assignment_desc,

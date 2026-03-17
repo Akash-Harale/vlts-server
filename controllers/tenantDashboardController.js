@@ -1,5 +1,6 @@
 const Client = require('../models/client.model');
 const Vehicle = require('../models/vehicle.js');
+const VehicleState = require('../models/vehicleState');
 const GPSDevice = require('../models/gpsDevice');
 const VehicleDeviceMap = require('../models/vehicleDeviceMap');
 const User = require('../models/userModel');
@@ -96,13 +97,57 @@ exports.getVehicles = async (req, res, next) => {
 
 exports.createVehicle = async (req, res, next) => {
     try {
+        const {
+            availability_place,
+            next_available_place,
+            next_available_date,
+            status,
+            ...vehicleData
+        } = req.body;
+
+        if (!next_available_date) {
+            return res.status(400).json({ success: false, message: "next_available_date is required" });
+        }
+        const final_availability_place = next_available_place || availability_place;
+        if (!final_availability_place) {
+            return res.status(400).json({ success: false, message: "availability_place or next_available_place is required" });
+        }
+
+        const inputDate = new Date(next_available_date);
+        const today = new Date();
+        const oneHourAgo = new Date(today.getTime() - (60 * 60 * 1000));
+
+        if (inputDate < oneHourAgo) {
+            return res.status(400).json({
+                success: false,
+                message: "next_available_date cannot be in the past",
+            });
+        }
+
         const vehicle = new Vehicle({
-            ...req.body,
-            tenant_id: req.user.tenant_id
+            ...vehicleData,
+            tenant_id: req.user.tenant_id,
+            next_available_place: final_availability_place,
+            next_available_date: inputDate,
         });
         await vehicle.save();
+
+        const vehicleState = new VehicleState({
+            vehicle_id: vehicle._id,
+            place_of_availability: final_availability_place,
+            next_available_date: inputDate,
+            status: status ? status.toUpperCase() : "ACTIVE",
+        });
+        await vehicleState.save();
+
         await logger.audit(req.user.emp_id, req.user.role, "create", "vehicle", `Created vehicle ${vehicle.registration_number}`, "success", req.user.tenant_id, vehicle._id);
-        res.status(201).json(vehicle);
+        
+        res.status(201).json({
+            success: true,
+            message: "Vehicle and availability state created successfully",
+            vehicle,
+            availability: vehicleState
+        });
     } catch (err) {
         next(err);
     }

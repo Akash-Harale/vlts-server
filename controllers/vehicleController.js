@@ -9,6 +9,7 @@ const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
 exports.registerVehicle = async (req, res) => {
   try {
     const {
+      tenant_id,
       client_id,
       make,
       model,
@@ -20,14 +21,25 @@ exports.registerVehicle = async (req, res) => {
       regn_valid_upto,
       status,
       availability_place,
+      next_available_place,
       next_available_date,
     } = req.body;
 
     console.log('vehicleController: registerVehicle: req.body: ', req.body);
 
     // Validate required new fields
+    const final_tenant_id = tenant_id || (req.user && req.user.tenant_id);
+
+    if (!final_tenant_id) {
+      return res.status(400).json({ success: false, message: "tenant_id is required" });
+    }
+    const final_availability_place = next_available_place || availability_place;
+
     if (!client_id) {
       return res.status(400).json({ success: false, message: "client_id is required" });
+    }
+    if (!final_availability_place) {
+      return res.status(400).json({ success: false, message: "availability_place or next_available_place is required" });
     }
     if (!chassis_number) {
       return res.status(400).json({ success: false, message: "chassis_number is required" });
@@ -47,15 +59,20 @@ exports.registerVehicle = async (req, res) => {
 
     const inputDate = new Date(next_available_date);
     const today = new Date();
+    // Set today to start of day for easier comparison if needed, 
+    // but here we just want to ensure it's not in the past.
+    // Let's allow today's date by checking if it's at least more than an hour ago to account for slight delays
+    const oneHourAgo = new Date(today.getTime() - (60 * 60 * 1000));
 
-    if (inputDate <= today) {
+    if (inputDate < oneHourAgo) {
       return res.status(400).json({
         success: false,
-        message: `next_available_date must be greater than today's date/time`,
+        message: `next_available_date cannot be in the past`,
       });
     }
 
     const vehicle = new Vehicle({
+      tenant_id: final_tenant_id,
       client_id,
       make,
       model,
@@ -65,14 +82,16 @@ exports.registerVehicle = async (req, res) => {
       engine_number,
       date_of_subscription: new Date(date_of_subscription),
       regn_valid_upto: new Date(regn_valid_upto),
+      next_available_place: final_availability_place,
+      next_available_date: inputDate,
     });
     await vehicle.save();
 
     const vehicleState = new VehicleState({
       vehicle_id: vehicle._id,
-      place_of_availability: availability_place,
+      place_of_availability: final_availability_place,
       next_available_date: inputDate,
-      status: status.toUpperCase(),
+      status: status ? status.toUpperCase() : "ACTIVE",
     });
     await vehicleState.save();
 
@@ -94,23 +113,51 @@ exports.registerVehicle = async (req, res) => {
 // Get all vehicles (include next_available_date)
 exports.getVehicles = async (req, res) => {
   try {
-    const states = await VehicleState.find().populate("vehicle_id");
+    // const query = { tenant_id: req.user.tenant_id };
 
-    const result = states.map((vs) => ({
-      vehicleId: vs?.vehicle_id?._id,
-      client_id: vs?.vehicle_id?.client_id,
-      registration_number: vs?.vehicle_id?.registration_number,
-      make: vs?.vehicle_id?.make,
-      model: vs?.vehicle_id?.model,
-      manufacturing_year: vs?.vehicle_id?.manufacturing_year,
-      chassis_number: vs?.vehicle_id?.chassis_number,
-      engine_number: vs?.vehicle_id?.engine_number,
-      date_of_subscription: vs?.vehicle_id?.date_of_subscription,
-      regn_valid_upto: vs?.vehicle_id?.regn_valid_upto,
-      place_of_availability: vs?.place_of_availability,
-      next_available_date: vs?.next_available_date,
-      status: vs?.status,
-    }));
+    // // Use client_id from query if provided (requested by user), 
+    // // otherwise fallback to role-based filtering
+    // const explicitClientId = req.query.client_id;
+    
+    // if (explicitClientId) {
+    //   query.client_id = explicitClientId;
+    // } else if (req.user.role === "tenant_user") {
+    //   query.client_id = req.user.client_id;
+    // }
+
+    // Step 1: Fetch all matching vehicles first
+    const vehicles = await Vehicle.find();
+    if (!vehicles || vehicles.length === 0) {
+      return res.json([]);
+    }
+    console.log('vehicleController: getVehicles: vehicles: ', vehicles);
+
+    const vehicleIds = vehicles.map(v => v._id);
+
+    // Step 2: Fetch states for these vehicles
+    const states = await VehicleState.find({ vehicle_id: { $in: vehicleIds } });
+
+    // Step 3: Map vehicles to their states (Robust: don't skip vehicles without state)
+    const result = vehicles.map((v) => {
+      const vs = states.find(s => s.vehicle_id.toString() === v._id.toString());
+      
+      return {
+        vehicleId: v._id,
+        client_id: v.client_id,
+        registration_number: v.registration_number,
+        make: v.make,
+        model: v.model,
+        manufacturing_year: v.manufacturing_year,
+        chassis_number: v.chassis_number,
+        engine_number: v.engine_number,
+        date_of_subscription: v.date_of_subscription,
+        regn_valid_upto: v.regn_valid_upto,
+        // Fallback to vehicle base fields if state is missing
+        next_available_place: vs?.place_of_availability || v.next_available_place || "N/A",
+        next_available_date: vs?.next_available_date || v.next_available_date || null,
+        status: vs?.status || "INACTIVE", // Default to INACTIVE if no state found
+      };
+    });
 
     res.json(result);
   } catch (err) {
@@ -197,11 +244,12 @@ exports.updateVehicle = async (req, res) => {
     if (next_available_date) {
       const inputDate = new Date(next_available_date);
       const today = new Date();
+      const oneHourAgo = new Date(today.getTime() - (60 * 60 * 1000));
 
-      if (inputDate <= today) {
+      if (inputDate < oneHourAgo) {
         return res.status(400).json({
           success: false,
-          message: `next_available_date must be greater than today's date/time`,
+          message: `next_available_date cannot be in the past`,
         });
       }
 

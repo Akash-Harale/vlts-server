@@ -1,8 +1,9 @@
 // /controllers/vehicleAvailabilityController.js
 const VehicleState = require("../models/vehicleState");
 const Vehicle = require("../models/vehicle");
-const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
 const Driver = require("../models/driver");
+const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
+const UserModel = require("../models/userModel");
 
 // Check available vehicles for a given location within given data range
 exports.checkAvailability = async (req, res) => {
@@ -30,14 +31,26 @@ exports.checkAvailability = async (req, res) => {
       return res.status(400).json({ error: "arrival_date must be after departure_date" });
     }
 
+    // Find vehicles belonging to the tenant/client
+    const vehicleQuery = { tenant_id: req.user.tenant_id };
+    if (req.user.role === "tenant_user") {
+      vehicleQuery.client_id = req.user.client_id;
+    }
+    const vehiclesOfUser = await Vehicle.find(vehicleQuery).select("_id");
+    const vehicleIdsOfUser = vehiclesOfUser.map(v => v._id);
+
     // Step 1: Find vehicles available at place and time
+    console.log(`Searching for vehicles in place: "${availability_place}" after date: ${depDate}`);
+    
     const availableStates = await VehicleState.find({
-      place_of_availability: availability_place,
+      vehicle_id: { $in: vehicleIdsOfUser },
+      place_of_availability: { $regex: new RegExp(`^${availability_place}$`, "i") },
       next_available_date: { $lte: depDate },
       status: "ACTIVE"
     }).populate("vehicle_id", "registration_number make model");
 
-    console.log("vehicleAvailabilityController: availableStates:", availableStates);
+    console.log(`Found ${availableStates.length} matching vehicle states.`);
+    console.log("vehicleAvailabilityController: availableStates:", JSON.stringify(availableStates, null, 2));
 
     // Step 2: For each vehicle, check driver mapping and availability
     const results = [];
@@ -145,6 +158,14 @@ exports.getAvailableDrivers = async (req, res) => {
       });
     }
 
+    // Find users belonging to the tenant/client
+    const userQuery = { tenant_id: req.user.tenant_id };
+    if (req.user.role === 'tenant_user') {
+      userQuery.client_id = req.user.client_id;
+    }
+    const tenantUsers = await UserModel.find(userQuery).select('driver_id');
+    const tenantDriverIds = tenantUsers.map(u => u.driver_id).filter(id => id);
+
     // Find drivers who have overlapping assignments in this window
     const busyAssignments = await DriverVehicleAssignment.find({
       status: "ACTIVE",
@@ -154,9 +175,9 @@ exports.getAvailableDrivers = async (req, res) => {
 
     const busyDriverIds = busyAssignments.map(a => a.driver_id);
 
-    //  Find drivers not in busyDriverIds
+    // Find drivers not in busyDriverIds but belonging to tenant/client
     const availableDrivers = await Driver.find({
-      _id: { $nin: busyDriverIds }
+      _id: { $in: tenantDriverIds, $nin: busyDriverIds }
     }).select("driver_name mobile_number email_id");
 
     res.status(200).json({
@@ -221,8 +242,12 @@ exports.getAvailableVehicles = async (req, res) => {
       });
     }
 
-    // Step 1: Get all vehicles
-    const allVehicles = await Vehicle.find().select("registration_number make model");
+    // Step 1: Get all vehicles for this tenant/client
+    const vehicleQuery = { tenant_id: req.user.tenant_id };
+    if (req.user.role === 'tenant_user') {
+      vehicleQuery.client_id = req.user.client_id;
+    }
+    const allVehicles = await Vehicle.find(vehicleQuery).select("registration_number make model");
 
     // Step 2: Find vehicles with overlapping assignments in this window
     const busyAssignments = await DriverVehicleAssignment.find({
