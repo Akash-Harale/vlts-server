@@ -5,9 +5,10 @@ const express = require('express');
 const router = express.Router();
 const {
   tenantAdminLogin,
-  tenantAdminLogout,
-  tenantAdminRefresh
-} = require('../controllers/tenantAdminAuthController');
+   tenantAdminLogout,
+   tenantAdminRefresh,
+   getProfile
+ } = require('../controllers/tenantAdminAuthController');
 
 const {
   createTenantUser,
@@ -20,8 +21,9 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 // Authentication
 router.post('/login', tenantAdminLogin);
-router.post('/logout', authMiddleware(["manage_users"]), tenantAdminLogout);
-router.post('/refresh', tenantAdminRefresh);
+ router.post('/logout', authMiddleware(["manage_users"]), tenantAdminLogout);
+ router.post('/refresh', tenantAdminRefresh);
+ router.get('/profile', authMiddleware(), getProfile);
 
 // Tenant user management (CREAT/READ/UPDATE/DELETE User of the Tenant?)
 router.post('/users', authMiddleware(["manage_users"]), createTenantUser);

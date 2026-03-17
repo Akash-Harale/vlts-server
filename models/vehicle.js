@@ -18,6 +18,9 @@ const vehicleSchema = new mongoose.Schema({
   engine_number: { type: String, required: true, unique: true },
   date_of_subscription: { type: Date, required: true },
   regn_valid_upto: { type: Date, required: true },
+  next_available_place: { type: String, required: true },
+  next_available_date: { type: Date, required: true },
+  tenant_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
   created_at: { type: Date, default: Date.now },
 });
 

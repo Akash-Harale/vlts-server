@@ -9,7 +9,13 @@ const logger = require('../utils/logger');
 // Helper: generate access + refresh tokens
 function generateTokens(user) {
   const accessToken = jwt.sign(
-    { id: user._id, role: user.role.name, emp_id: user.emp_id, tenant_id: user.tenant_id },
+    { 
+      id: user._id, 
+      role: user.role.name, 
+      emp_id: user.emp_id, 
+      tenant_id: user.tenant_id,
+      client_id: user.client_id || null 
+    },
     process.env.JWT_SECRET,
     { expiresIn: "15m" } // short-lived
   );
@@ -44,7 +50,7 @@ exports.tenantUserLogin = async (req, res, next) => {
     const { accessToken, refreshToken } = generateTokens(user);
 
     await logger.audit(user.emp_id, user.role.name, "login", "user", "Tenant User login successful", "success", user.tenant_id, requestId);
-    res.json({ accessToken, refreshToken });
+    res.json({ accessToken, refreshToken, user: { id: user._id, role: user.role.name, tenant_id: user.tenant_id } });
   } catch (err) {
     await logger.error("SYSTEM", "tenant_user_auth", err, "login", null, requestId, 500);
     next(err);

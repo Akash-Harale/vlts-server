@@ -36,7 +36,7 @@ exports.tenantAdminLogin = async (req, res, next) => {
 
     const { accessToken, refreshToken } = generateTokens(user);
     await logger.audit(user.emp_id, user.role.name, "login", "user", "Tenant Admin login successful", "success", user.tenant_id, null);
-    res.json({ accessToken, refreshToken });
+    res.json({ accessToken, refreshToken, user: { id: user._id, role: user.role.name, tenant_id: user.tenant_id } });
   } catch (err) {
     next(err);
   }
@@ -74,4 +74,15 @@ exports.tenantAdminRefresh = async (req, res, next) => {
     res.status(403).json({ error: "Invalid or expired refresh token" });
   }
 };
+ 
+ /**
+  * Tenant Admin Profile
+  */
+ exports.getProfile = async (req, res, next) => {
+   try {
+     res.json({ user: { id: req.user.id, role: req.user.role, emp_id: req.user.emp_id, tenant_id: req.user.tenant_id } });
+   } catch (err) {
+     next(err);
+   }
+ };
 

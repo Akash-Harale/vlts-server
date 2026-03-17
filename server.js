@@ -39,6 +39,8 @@ const gpsDeviceRoutes = require("./routes/gpsDeviceRoutes");
 const vehicleDeviceMapRoutes = require("./routes/vehicleDeviceMapRoutes");
 const clientRoutes = require("./routes/clientsRoutes");
 const archiveRoutes = require("./routes/archiveRoutes");
+const tenantDashboardRoutes = require("./routes/tenantDashboardRoutes");
+const authMgmtRoutes = require("./routes/authMgmtRoutes");
 
 // 17/02/2026
 const checkAvailabilityRoutes = require("./routes/checkAvailabilityRoutes");
@@ -109,6 +111,8 @@ app.use("/api/gps", gpsDeviceRoutes);
 app.use("/api", vehicleDeviceMapRoutes);
 // CRUD- Client
 app.use("/api/clients", clientRoutes);
+app.use("/api/tenant-admin", tenantDashboardRoutes);
+app.use("/api/auth", authMgmtRoutes);
 // Root endpoint
 app.get("/", (req, res) => {
   res.send("Fleet Management API is running...");

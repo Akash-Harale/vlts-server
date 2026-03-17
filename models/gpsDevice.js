@@ -16,7 +16,8 @@ const gpsDeviceSchema = new mongoose.Schema({
   status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'FAULTY'], default: 'ACTIVE' },
   installed_on: { type: Date },
   created_at: { type: Date, default: Date.now },
-  failed_attempts: { type: Number, default: 0 } // Track failed mapping attempts
+  failed_attempts: { type: Number, default: 0 }, // Track failed mapping attempts
+  tenant_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true }
 });
 
 // Indexes for faster queries

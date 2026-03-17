@@ -9,7 +9,8 @@ const userModelSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String },
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
-  tenant_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: false }
+  tenant_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: false },
+  client_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: false }
 }, { collection: 'users' });
 
 // Pre-save hook for password hashing

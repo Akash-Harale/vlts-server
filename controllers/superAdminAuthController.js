@@ -41,7 +41,7 @@ exports.superAdminLogin = async (req, res, next) => {
 
     const { accessToken, refreshToken } = generateTokens(user);
     await logger.audit(user.emp_id, user.role.name, "login", "user", "Super Admin login successful", "success", null, null);
-    res.json({ accessToken, refreshToken });
+    res.json({ accessToken, refreshToken, user: { id: user._id, role: user.role.name } });
   } catch (err) {
     next(err);
   }

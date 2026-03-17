@@ -39,6 +39,11 @@ const clientSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        tenant_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Tenant",
+            required: true,
+        },
     },
     { timestamps: true }
 );
