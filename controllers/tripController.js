@@ -2,11 +2,13 @@
 const mongoose = require("mongoose");
 const Route = require("../models/route");
 const Trip = require("../models/trip");
-const VehicleState = require("../models/vehicleState");
+const VehicleState = require("../models/vehicleState"); 
 const Vehicle = require("../models/vehicle");
 const DriverVehicle = require("../models/driverVehicleAssignment");
 const vehicleState = require("../models/vehicleState");
 const { migrateTripToHistory } = require("../utils/migrateTripHistory");
+const { generateGeofence } = require("../services/osmService");
+const Geofence = require("../models/geofence");                          // ← NEW
 
 // Create Route with Vehicle mapped
 /*
@@ -68,14 +70,23 @@ Response:
   }
 }
 */
+
+
 exports.createTrip = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { route, vehicleId, driverId, departureTime, arrivalTime, assignment_desc } = req.body;
+    const {
+      route,
+      vehicleId,
+      driverId,
+      departureTime,
+      arrivalTime,
+      assignment_desc,
+      geofenceRadius,                                                     // ← NEW
+    } = req.body;
 
-    // Reassign source/destination from body to match schema fields
     const place_from = route?.source;
     const place_to = route?.destination;
 
@@ -97,9 +108,20 @@ exports.createTrip = async (req, res) => {
       place_to,
       source: route.geometry.coordinates[0],
       destination: route.geometry.coordinates[route.geometry.coordinates.length - 1],
-      geometry: route.geometry
+      geometry: route.geometry,
     });
     await routeDoc.save({ session });
+
+    // ── Generate & save Geofence ──────────────────────────────────────────── NEW
+    const radiusMeters = geofenceRadius || 500;
+    const polygon = generateGeofence(route.geometry, radiusMeters);
+    const geofence = new Geofence({
+      route_id: routeDoc._id,
+      radius: radiusMeters,
+      geometry: polygon,
+    });
+    await geofence.save({ session });
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Insert Trip
     const assignment = new Trip({
@@ -109,14 +131,11 @@ exports.createTrip = async (req, res) => {
       departure_time: dep,
       arrival_time: arr,
       assignment_desc,
-      status: "ACTIVE"
+      status: "ACTIVE",
     });
     await assignment.save({ session });
 
     // Insert/Update VehicleState
-    // Store the current valeus of place_of_availability and next_available_date
-    // into prev---- fields to restore the original Vehicle Status if trip is cancelled during REVIEW
-
     const vehiclestate = await VehicleState.findOne({ vehicle_id: vehicleId });
 
     const vs = await VehicleState.findOneAndUpdate(
@@ -127,14 +146,12 @@ exports.createTrip = async (req, res) => {
         prev_available_date: vehiclestate.next_available_date,
         place_of_availability: place_to,
         next_available_date: arr,
-        status: "ACTIVE"
+        status: "ACTIVE",
       },
       { upsert: true, new: true, session }
     );
 
-    // Update route_id into driverVehicleAssignment model to enable
-    // query the latest vehicle/driver route info thru populate
-
+    // Update route_id into driverVehicleAssignment
     const driverVehicleDoc = await DriverVehicle.findOneAndUpdate(
       { vehicle_id: vehicleId },
       { route_id: routeDoc._id },
@@ -147,7 +164,6 @@ exports.createTrip = async (req, res) => {
       return res.status(400).json({ success: false, message: "No driver-vehicle assignment found for this vehicle" });
     }
 
-    // Fetch vehicle info for response
     const vehicleDoc = await Vehicle.findById(vehicleId).session(session);
 
     await session.commitTransaction();
@@ -163,7 +179,13 @@ exports.createTrip = async (req, res) => {
           place_from: routeDoc.place_from,
           place_to: routeDoc.place_to,
           source: routeDoc.source,
-          destination: routeDoc.destination
+          destination: routeDoc.destination,
+        },
+        geofence: {                                                       // ← NEW
+          _id: geofence._id,
+          route_id: geofence.route_id,
+          radius: geofence.radius,
+          geometry: geofence.geometry,
         },
         assignment: {
           _id: assignment._id,
@@ -174,24 +196,23 @@ exports.createTrip = async (req, res) => {
           arrival_time: assignment.arrival_time,
           assignment_desc: assignment.assignment_desc,
           status: assignment.status,
-          assigned_at: assignment.assigned_at
+          assigned_at: assignment.assigned_at,
         },
         vehicle: vehicleDoc
           ? {
-            id: vehicleDoc._id,
-            registration_number: vehicleDoc.registration_number,
-            make: vehicleDoc.make,
-            model: vehicleDoc.model
-          }
+              id: vehicleDoc._id,
+              registration_number: vehicleDoc.registration_number,
+              make: vehicleDoc.make,
+              model: vehicleDoc.model,
+            }
           : null,
-        vs
-      }
+        vs,
+      },
     });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-
-    console.error("assignRoute error:", err);
+    console.error("createTrip error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
