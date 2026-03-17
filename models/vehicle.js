@@ -1,14 +1,23 @@
-// /routes/vehicle.js
+// /models/vehicle.js
 // Date: 22 Jan 2026
 // Author: Suresh Gupta
 
 const mongoose = require("mongoose");
 
 const vehicleSchema = new mongoose.Schema({
+  client_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Client",
+    required: true,
+  },
   make: { type: String },
   model: { type: String },
   registration_number: { type: String, required: true, unique: true },
   manufacturing_year: { type: Number },
+  chassis_number: { type: String, required: true, unique: true },
+  engine_number: { type: String, required: true, unique: true },
+  date_of_subscription: { type: Date, required: true },
+  regn_valid_upto: { type: Date, required: true },
   created_at: { type: Date, default: Date.now },
 });
 
