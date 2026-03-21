@@ -7,8 +7,10 @@ services:
     restart: always
     ports:
       - "127.0.0.1:3006:3000"
+      - "0.0.0.0:3007:3007"
     env_file:
       - .env
     environment:
       - HOST=0.0.0.0
       - PORT=3000
+      - TCP_PORT=3007
