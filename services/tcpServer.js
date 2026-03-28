@@ -49,7 +49,7 @@ const tcpServer = net.createServer(socket => {
       });
 
       await gpsDoc.save();
-      log("INFO", `GPS packet stored: ${gpsDoc._id} [${parsed.data_type}]: \nparsed`);
+      log("INFO", `GPS packet stored: ${gpsDoc._id} [${parsed.data_type}]: \nParsed Data: ${parsed}`);
     } catch (err) {
       log("ERROR", "Error storing GPS packet", err);
     }
