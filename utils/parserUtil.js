@@ -17,15 +17,20 @@ const emergencyFieldMap = {
 };
 
 const trackingFieldMap = {
-  0: "header", 1: "vendor_id", 2: "firmware_version", 3: "firmware_date",
-  4: "packet_type", 5: "message_id", 6: "packet_status", 7: "imei",
-  8: "vehicle_reg", 9: "gps_fix", 10: "date", 11: "time", 12: "latitude",
-  13: "latitude_dir", 14: "longitude", 15: "longitude_dir", 16: "speed",
-  17: "heading", 18: "satellites", 19: "altitude", 20: "pdop", 21: "hdop",
-  22: "operator", 23: "ignition_status", 24: "main_power_status",
-  25: "main_voltage", 26: "internal_battery_voltage", 27: "emergency_status",
-  28: "tamper_alert", 29: "gsm_signal_strength", 30: "mcc", 31: "mnc",
-  32: "lac", 33: "cell_id", 47: "frame_number", 54: "checksum"
+  0: "header", 1: "vendor_id", 2: "firmware_version", 
+  3: "packet_type", 4: "message_id", 5: "packet_status", 6: "imei",
+  7: "vehicle_reg", 8: "gps_fix", 9: "date", 10: "time", 11: "latitude",
+  12: "latitude_dir", 13: "longitude", 14: "longitude_dir", 15: "speed",
+  16: "heading", 17: "satellites", 18: "altitude", 19: "pdop", 20: "hdop",
+  21: "operator", 22: "ignition_status", 23: "main_power_status",
+  24: "main_voltage", 25: "internal_battery_voltage", 26: "emergency_status",
+  27: "tamper_alert", 28: "gsm_signal_strength", 29: "mcc", 30: "mnc",
+  31: "lac", 32: "cell_id", 33: "gsm_nmr_ 1st", 34: "lac_nmr_1st", 35: "cell_id_nmr_1st",
+  36: "gsm_nmr_ 2nd", 37: "lac_nmr_2nd", 38: "cell_id_nmr_2nd",
+  39: "gsm_nmr_ 3rd", 40: "lac_nmr_3rd", 41: "cell_id_nmr_3rd",
+  42: "gsm_nmr_ 4th", 43: "lac_nmr_4th", 44: "cell_id_nmr_4th", 45: "digital_input",
+  46: "digital_output", 47: "frame_number", 48: "analog_input1", 49: "analog_input2",
+  50: "delta_distance", 51: "ota_response", 52: "checksum"
 };
 
 const healthFieldMap = {

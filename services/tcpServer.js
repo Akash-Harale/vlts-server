@@ -32,8 +32,8 @@ const tcpServer = net.createServer(socket => {
       // Print raw data in multiple views for debugging
       console.log("=== RAW GPS DATA (ASCII String) ===");
       console.log(rawStr);
-      console.log("=== RAW GPS DATA (Hex Dump) ===");
-      console.log(data.toString("hex"));
+      //console.log("=== RAW GPS DATA (Hex Dump) ===");
+      //console.log(data.toString("hex"));
 
       // Parse packet immediately
       const parsed = parsePacket(rawStr);
