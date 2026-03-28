@@ -52,9 +52,7 @@ const tcpServer = net.createServer(socket => {
       
       // Enhanced logging
       log("INFO", `GPS packet stored: ${gpsDoc._id} [${parsed.data_type}]`);
-      console.log("=== GPS Packet Received At ===");
-      console.log(gpsDoc.received_at.toISOString());
-
+      
      // Use the helper for clean logging
       logParsedPacket(parsed, gpsDoc.received_at);
       
