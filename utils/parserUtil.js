@@ -4,8 +4,10 @@
     function parsePacket(rawPacket) {
     const fields = rawPacket.split(",").map(f => f.trim());
 
+    console.log("parserUtil: fields: ", fields);
+
     // LOGIN PACKET
-    if (fields[7] === "AIS140") {
+    if (fields[5] === "AIS140") {
         return {
         data_type: "Login",
         imei: fields[5],
@@ -24,7 +26,7 @@
 
     // TRACKING PACKET
     const packetTypes = ["NR","EA","TA","HP","IN","IF","BD","BR","BL"];
-    if (packetTypes.includes(fields[4])) {
+    if (packetTypes.includes(fields[3])) {
         return {
         data_type: "Tracking",
         imei: fields[7],
@@ -33,7 +35,7 @@
     }
 
     // HEALTH PACKET — exact field mapping
-    if (fields.length == 13 && fields[7] !== "AIS140") {
+    if (fields.length == 13 && fields[5] !== "AIS140") {
         return {
         data_type: "Health",
         imei: fields[3],
