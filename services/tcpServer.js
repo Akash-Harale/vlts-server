@@ -1,46 +1,11 @@
-/* Commented on 20/03/2026 
 // services/tcpServer.js
-require("dotenv").config();
-const net = require('net');
-const connectDB = require('../config/db');   // import existing db connection
-const GPSRawData = require('../models/gpsRawData');
-
-// Initialize MongoDB connection once when service starts
-connectDB();
-
-const tcpServer = net.createServer(socket => {
-  console.log('GPS device connected');
-
-  socket.on('data', async data => {
-    try {
-      const raw = JSON.parse(data.toString()); // replace with real parser
-      const gpsRaw = new GPSRawData({
-        imei: raw.imei,
-        raw_payload: raw,
-        raw_data: Buffer.from(data)
-      });
-      await gpsRaw.save();
-      console.log('Raw GPS packet stored:', gpsRaw._id);
-    } catch (err) {
-      console.error('Error parsing GPS packet:', err.message);
-    }
-  });
-});
-
-tcpServer.listen(3007, '0.0.0.0', () => {
-  console.log('TCP server listening on port 3007  ');
-});
-
-module.exports = tcpServer;
-*/
-
-// 20/03/2026
-// services/tcpServer.js
+// 28/03/2026
 
 require("dotenv").config();
 const net = require("net");
-const connectDB = require("../config/db");   // import existing db connection
-const GPSRawData = require("../models/gpsRawData");
+const connectDB = require("../config/db");
+const GpsData = require("../models/gpsData");   // unified schema
+const { parsePacket } = require("../utils/parserUtil"); // parser utility
 
 // Initialize MongoDB connection once when service starts
 connectDB();
@@ -55,63 +20,64 @@ function log(level, message, err = null) {
   }
 }
 
-// Create TCP server
 const tcpServer = net.createServer(socket => {
   log("INFO", "GPS device connected");
+  socket.setKeepAlive(true, 60000);
 
-  // Enable TCP keep-alive to prevent idle disconnects
-  socket.setKeepAlive(true, 60000); // send keep-alive every 60s
-
-  // Handle incoming data
   socket.on("data", async data => {
     try {
-      // Convert buffer to string and parse JSON
-      const raw = JSON.parse(data.toString()); // replace with real parser for GPS protocol
+      // Convert buffer to ASCII string exactly as received
+      const rawStr = data.toString("ascii").trim();
 
-      // Save raw packet to MongoDB
-      const gpsRaw = new GPSRawData({
-        imei: raw.imei,
-        raw_payload: raw,
-        raw_data: Buffer.from(data)
+      // Print raw data in multiple views for debugging
+      console.log("=== RAW GPS DATA (ASCII String) ===");
+      console.log(rawStr);
+      console.log("=== RAW GPS DATA (Hex Dump) ===");
+      console.log(data.toString("hex"));
+
+      // Parse packet immediately
+      const parsed = parsePacket(rawStr);
+
+      // Save raw + parsed together in unified schema
+      const gpsDoc = new GpsData({
+        raw_packet: rawStr,              // original string
+        imei: parsed.imei,               // extracted IMEI
+        data_type: parsed.data_type,     // Login, Tracking, Health, Emergency, Unknown
+        parsed_fields: parsed.parsed_fields, // full audit trace {index, field, value}
+        processed: false,                // enrichment flag
+        received_at: new Date()
       });
 
-      await gpsRaw.save();
-      log("INFO", `Raw GPS packet stored: ${gpsRaw._id}`);
+      await gpsDoc.save();
+      log("INFO", `GPS packet stored: ${gpsDoc._id} [${parsed.data_type}]`);
     } catch (err) {
-      log("ERROR", "Error parsing GPS packet", err);
+      log("ERROR", "Error storing GPS packet", err);
     }
   });
 
-  // Handle socket errors
   socket.on("error", err => {
     log("ERROR", "Socket error", err);
   });
 
-  // Handle client disconnect
   socket.on("close", () => {
     log("INFO", "GPS device disconnected");
   });
 });
 
-// Handle server-level errors
 tcpServer.on("error", err => {
   log("ERROR", "TCP server error", err);
 });
 
-// Start listening
 tcpServer.listen(3007, "0.0.0.0", () => {
   log("INFO", "TCP server listening on port 3007");
 });
 
-// Global uncaught exception handler (prevents crash)
 process.on("uncaughtException", err => {
   log("FATAL", "Uncaught exception", err);
 });
 
-// Global unhandled promise rejection handler
 process.on("unhandledRejection", err => {
   log("FATAL", "Unhandled promise rejection", err);
 });
 
 module.exports = tcpServer;
-
