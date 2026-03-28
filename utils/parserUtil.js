@@ -99,4 +99,16 @@ function parsePacket(rawPacket) {
   };
 }
 
-module.exports = { parsePacket };
+// Verbose logger for manual verification
+function logParsedPacket(parsed, receivedAt) {
+  console.log("=== GPS Packet Summary ===");
+  console.log(`Type: ${parsed.data_type}`);
+  console.log(`IMEI: ${parsed.imei || "N/A"}`);
+  console.log(`Received At: ${receivedAt.toISOString()}`);
+  console.log("=== Parsed Fields ===");
+  parsed.parsed_fields.forEach(field => {
+    console.log(`${field.index}: ${field.field || "unknown"} = ${field.value}`);
+  });
+}
+
+module.exports = { parsePacket, logParsedPacket };

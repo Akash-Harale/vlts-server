@@ -5,7 +5,7 @@ require("dotenv").config();
 const net = require("net");
 const connectDB = require("../config/db");
 const GpsData = require("../models/gpsData");   // unified schema
-const { parsePacket } = require("../utils/parserUtil"); // parser utility
+const { parsePacket, logParsedPacket } = require("../utils/parserUtil"); // parser utility
 
 // Initialize MongoDB connection once when service starts
 connectDB();
@@ -55,10 +55,8 @@ const tcpServer = net.createServer(socket => {
       console.log("=== GPS Packet Received At ===");
       console.log(gpsDoc.received_at.toISOString());
 
-      console.log("=== GPS Parsed Data ===");
-      parsed.parsed_fields.forEach(field => {
-        console.log(`${field.index}: ${field.field || "unknown"} = ${field.value}`);
-      });
+     // Use the helper for clean logging
+      logParsedPacket(parsed, gpsDoc.received_at);
       
     } catch (err) {
       log("ERROR", "Error storing GPS packet", err);
