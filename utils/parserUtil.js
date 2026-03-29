@@ -2,7 +2,7 @@
 // Utility to classify and parse GPS packets into structured fields with audit traceability
 
 require("dotenv").config();
-const VERBOSE = process.env.VERBOSE_LOGGING === "true";
+const VERBOSE = process.env.VERBOSE_LOGGING || "truefalse";
 
 // Lookup maps for each packet type
 const loginFieldMap = {
@@ -106,7 +106,7 @@ function parsePacket(rawPacket) {
 function logParsedPacket(parsed, receivedAt) {
   if (!VERBOSE) return; // only log if VERBOSE_LOGGING=true
 
-  // VERBOSE_LOGGING = TRUEcode block
+  // VERBOSE_LOGGING = TRUE code block
   console.log("=== GPS Packet Summary ===");
   console.log(`Type: ${parsed.data_type}`);
   console.log(`IMEI: ${parsed.imei || "N/A"}`);
