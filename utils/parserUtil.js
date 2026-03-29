@@ -1,6 +1,9 @@
 // parserUtil.js
 // Utility to classify and parse GPS packets into structured fields with audit traceability
 
+require("dotenv").config();
+const VERBOSE = process.env.VERBOSE_LOGGING === "true";
+
 // Lookup maps for each packet type
 const loginFieldMap = {
   0: "header", 1: "vendor_id", 2: "vehicle_reg", 3: "imei",
@@ -101,6 +104,74 @@ function parsePacket(rawPacket) {
 
 // Verbose logger for manual verification
 function logParsedPacket(parsed, receivedAt) {
+  if (!VERBOSE) return; // only log if VERBOSE_LOGGING=true
+
+  // VERBOSE_LOGGING = TRUEcode block
+  console.log("=== GPS Packet Summary ===");
+  console.log(`Type: ${parsed.data_type}`);
+  console.log(`IMEI: ${parsed.imei || "N/A"}`);
+  console.log(`Received At: ${receivedAt.toISOString()}`);
+  console.log("=== Parsed Fields ===");
+  parsed.parsed_fields.forEach(field => {
+    console.log(`${field.index}: ${field.field || "unknown"} = ${field.value}`);
+  });
+}
+
+module.exports = { parsePacket, logParsedPacket };
+
+
+// parserUtil.js
+// Utility to classify and parse GPS packets into structured fields with audit traceability
+
+const VERBOSE = process.env.VERBOSE_LOGGING === "true";
+
+// Lookup maps for each packet type (same as before)
+const loginFieldMap = { /* ... */ };
+const emergencyFieldMap = { /* ... */ };
+const trackingFieldMap = { /* ... */ };
+const healthFieldMap = { /* ... */ };
+
+// Helper to enrich fields with index + field name
+function enrichFields(fields, fieldMap) {
+  return fields.map((val, idx) => ({
+    index: idx,
+    field: fieldMap[idx] || null,
+    value: val.trim()
+  }));
+}
+
+// Main parser
+function parsePacket(rawPacket) {
+  const fields = rawPacket.split(",").map(f => f.trim());
+
+  if (fields[7] === "AIS140") {
+    return { data_type: "Login", imei: fields[5], parsed_fields: enrichFields(fields, loginFieldMap) };
+  }
+
+  if (fields[2] === "EMR" || fields[2] === "SEM") {
+    return { data_type: "Emergency", imei: fields[3], parsed_fields: enrichFields(fields, emergencyFieldMap) };
+  }
+
+  const packetTypes = ["NR","EA","TA","HP","IN","IF","BD","BR","BL"];
+  if (packetTypes.includes(fields[4])) {
+    return { data_type: "Tracking", imei: fields[7], parsed_fields: enrichFields(fields, trackingFieldMap) };
+  }
+
+  if (fields.length >= 13 && fields[7] !== "AIS140") {
+    return { data_type: "Health", imei: fields[3], parsed_fields: enrichFields(fields, healthFieldMap) };
+  }
+
+  return {
+    data_type: "Unknown",
+    imei: null,
+    parsed_fields: fields.map((val, idx) => ({ index: idx, field: null, value: val }))
+  };
+}
+
+// Verbose logger for manual verification
+function logParsedPacket(parsed, receivedAt) {
+  if (!VERBOSE) return; // only log if VERBOSE_LOGGING=true
+
   console.log("=== GPS Packet Summary ===");
   console.log(`Type: ${parsed.data_type}`);
   console.log(`IMEI: ${parsed.imei || "N/A"}`);

@@ -53,7 +53,7 @@ const tcpServer = net.createServer(socket => {
       // Enhanced logging
       log("INFO", `GPS packet stored: ${gpsDoc._id} [${parsed.data_type}]`);
       
-     // Use the helper for clean logging
+     // Use the helper for clean logging with VERBOSE_LOGGING flag set to True/False
       logParsedPacket(parsed, gpsDoc.received_at);
       
     } catch (err) {
