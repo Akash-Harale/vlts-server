@@ -4,6 +4,8 @@
 require("dotenv").config();
 const VERBOSE = process.env.VERBOSE_LOGGING || "truefalse";
 
+console.log("VERBOSE_LOGGING value fetched from .env: ", VERBOSE);
+
 // Lookup maps for each packet type
 const loginFieldMap = {
   0: "header", 1: "vendor_id", 2: "vehicle_reg", 3: "imei",
