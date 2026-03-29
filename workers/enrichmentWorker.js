@@ -318,6 +318,7 @@ module.exports = { startEnrichmentLoop };
 // workers/enrichmentWorker.js
 // Date: March 2026 - Refactored for unified gpsData store
 
+
 const GPSData = require('../models/gpsData');          // unified raw+parsed schema
 const GPSDevice = require('../models/gpsDevice');
 const Vehicle = require('../models/vehicle');
@@ -330,6 +331,8 @@ const Geofence = require('../models/geofence');
 const { v4: uuidv4 } = require('uuid');
 const { broadcastTelemetry } = require('../services/wsServer');
 const turf = require('@turf/turf');
+
+const { logParsedPacket } = require('../utils/parserUtil');
 const telemetryUtils = require('../utils/telemetryUtils');
 
 const activeSessions = new Map();
@@ -527,10 +530,14 @@ async function processRawPackets(wss) {
 
   if (!rawDocs.length) return;
 
-  console.log(`[enrichment] Processing ${rawDocs.length} tracking packets`);
+  //console.log(`[enrichment] Processing ${rawDocs.length} tracking packets`);
 
   for (const rawDoc of rawDocs) {
     try {
+
+      // Print parsed fields for manual verification
+      logParsedPacket(rawDoc, rawDoc.received_at);
+
       const gpsDevice = await resolveDevice(rawDoc);
       if (!gpsDevice) continue;
 
