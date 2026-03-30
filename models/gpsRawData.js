@@ -16,7 +16,7 @@ const gpsRawDataSchema = new mongoose.Schema({
   parsed_data: { type: Object, required: true }, // parsed fields as object
   received_at: { type: Date, default: Date.now, index: true },
   processed: { type: Boolean, default: false }  // enrichment flag
-}, { collection: "gpsRawData" });
+});
 
 // Indexes for faster queries
 gpsRawDataSchema.index({ imei: 1, received_at: -1 });
