@@ -63,7 +63,7 @@ function parsePacket(rawPacket) {
   if (fields[5] === "AIS140") {
     return {
       data_type: "Login",
-      imei: fields[5],
+      imei: fields[3],
       parsed_fields: enrichFields(fields, loginFieldMap)
     };
   }
@@ -82,7 +82,7 @@ function parsePacket(rawPacket) {
   if (packetTypes.includes(fields[3])) {
     return {
       data_type: "Tracking",
-      imei: fields[7],
+      imei: fields[6],
       parsed_fields: enrichFields(fields, trackingFieldMap)
     };
   }
