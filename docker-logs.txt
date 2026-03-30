@@ -1,0 +1,53 @@
+
+> Vehicle Live Tracking System@1.0.2 start:all
+> npm run tcpserver &  npm start
+
+
+> Vehicle Live Tracking System@1.0.2 start
+> node server.js
+
+
+> Vehicle Live Tracking System@1.0.2 tcpserver
+> node ./services/tcpServer.js
+
+(node:47) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2026-03-24T05:30:49.078Z] [INFO] TCP server listening on port 3007
+MongoDB connected
+driverVehicleRoutes loaded ..
+[tripHistoryController] Controller loaded.
+[tripHistoryEventsController] Controller loaded.
+[tripHistoryEventsRoutes] Initializing trip history events routes...
+[tripHistoryEventsRoutes] Routes registered successfully.
+[tripHistoryEventsReplayController] Controller loaded.
+[tripHistoryEventsReplayRoutes] Initializing trip history events replay routes...
+[tripHistoryEventsReplayRoutes] Routes registered successfully.
+[server] Routes mounted: 
+ WebSocket server started
+(node:36) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Server + WebSocket running on port 3000
+MongoDB connected
+ [CRON] Running GPS device health check...
+ [CRON] Health check completed. Devices updated: 0
+ [CRON] Running GPS device health check...
+ [CRON] Health check completed. Devices updated: 0
+[2026-03-24T05:40:49.367Z] Success! MongoDB ping successful
+[2026-03-24T05:40:50.716Z] Success! MongoDB ping successful
+[2026-03-24T05:43:03.862Z] [INFO] GPS device connected
+=== RAW GPS DATA (ASCII String) ===
+$Header,NAVITECH,VA01I2019,865395072470808,NAVI5.0,AIS140,28.550938,N,077.056626,E*
+=== RAW GPS DATA (Hex Dump) ===
+244865616465722c4e415649544543482c5641303149323031392c3836353339353037323437303830382c4e415649352e302c4149533134302c32382e3535303933382c4e2c3037372e3035363632362c452a
+=== AIS-140 HEADER SECTION ===
+$Header
+[2026-03-24T05:43:12.912Z] [INFO] Raw GPS packet stored: 69c22470ccbe35eeda5e30f9
+ [CRON] Running GPS device health check...
+ [CRON] Health check completed. Devices updated: 0
+=== RAW GPS DATA (ASCII String) ===
+$Header,NAVITECH,NAVI5.0,NR,01,L,865395072470808,VA01I2019,0,24032026,053602,28.550938,N,077.056626,E,0.0,253,0,209.0,99.00,99.00,AIRTEL,0,1,12.6,4.1,0,C,17,404,010,0066,B97F,17,0066,6439,16,0066,C9C9,15,0066,AF9D,15,0066,6438,0100,00,000012,0.0,0.0,43260,()*
+=== RAW GPS DATA (Hex Dump) ===
+244865616465722c4e415649544543482c4e415649352e302c4e522c30312c4c2c3836353339353037323437303830382c5641303149323031392c302c32343033323032362c3035333630322c32382e3535303933382c4e2c3037372e3035363632362c452c302e302c3235332c302c3230392e302c39392e30302c39392e30302c41495254454c2c302c312c31322e362c342e312c302c432c31372c3430342c3031302c303036362c423937462c31372c303036362c363433392c31362c303036362c433943392c31352c303036362c414639442c31352c303036362c363433382c303130302c30302c3030303031322c302e302c302e302c34333236302c28292a
+=== AIS-140 HEADER SECTION ===
+$Header
+[2026-03-24T05:45:09.696Z] [INFO] Raw GPS packet stored: 69c224e5ccbe35eeda5e30fb
