@@ -49,7 +49,7 @@ const healthFieldMap = {
 // Helper to enrich fields with index + field name
 function enrichFields(fields, fieldMap) {
   return fields.map((val, idx) => ({
-    index: idx,
+    //index: idx,
     field: fieldMap[idx] || null,
     value: val.trim()
   }));
@@ -100,7 +100,10 @@ function parsePacket(rawPacket) {
   return {
     data_type: "Unknown",
     imei: null,
-    parsed_fields: fields.map((val, idx) => ({ index: idx, field: null, value: val }))
+    parsed_fields: fields.map((val, idx) => ({ 
+        //index: idx, 
+        field: null, 
+        value: val }))
   };
 }
 

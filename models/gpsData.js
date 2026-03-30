@@ -9,7 +9,7 @@ const gpsDataSchema = new mongoose.Schema({
   imei: { type: String, index: true },            // extracted IMEI
   data_type: { type: String, enum: ["Login", "Tracking", "Health", "Emergency", "Unknown"], required: true },
   parsed_fields: [{
-    index: { type: Number, required: true },
+    //index: { type: Number, required: true },
     field: { type: String },   // semantic name from lookup map
     value: { type: String }
   }],
@@ -43,8 +43,7 @@ module.exports = mongoose.model("GpsData", gpsDataSchema);
     { "index": 8, "field": "ignition_on_interval", "value": "15" },
     { "index": 9, "field": "ignition_off_interval", "value": "60" },
     { "index": 10, "field": "digital_inputs", "value": "0000" },
-    { "index": 11, "field": "analog_input1", "value": "1.1" },
-    { "index": 12, "field": "analog_input2_checksum", "value": "1.1*02" }
+    { "index": 11, "field": "analog_input1", "value": "1.1" }
   ],
   "received_at": "2026-03-28T17:37:00.000Z"
 }
@@ -112,8 +111,7 @@ Sample Document (Tracking Packet)
     { "index": 31, "field": "mnc", "value": "10" },
     { "index": 32, "field": "lac", "value": "140E" },
     { "index": 33, "field": "cell_id", "value": "9346" },
-    { "index": 47, "field": "frame_number", "value": "1234" },
-    { "index": 54, "field": "checksum", "value": "*62" }
+    { "index": 47, "field": "frame_number", "value": "1234" }
   ],
   "received_at": "2026-03-28T17:37:00.000Z"
 }
