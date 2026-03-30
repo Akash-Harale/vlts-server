@@ -2,11 +2,9 @@
 // Utility to classify and parse GPS packets into structured fields with audit traceability
 
 require("dotenv").config();
-const VERBOSE = process.env.VERBOSE_LOGGING || "truefalse";
+const VERBOSE = process.env.VERBOSE_LOGGING === "true";
 
-console.log("VERBOSE_LOGGING value fetched from .env: ", VERBOSE);
-
-// Lookup maps for each packet type
+// Lookup maps for each packet type of AIS-140 compliant gps devices protocol
 const loginFieldMap = {
   0: "header", 1: "vendor_id", 2: "vehicle_reg", 3: "imei",
   4: "firmware_version", 5: "protocol_marker", 6: "latitude",
@@ -30,10 +28,10 @@ const trackingFieldMap = {
   21: "operator", 22: "ignition_status", 23: "main_power_status",
   24: "main_voltage", 25: "internal_battery_voltage", 26: "emergency_status",
   27: "tamper_alert", 28: "gsm_signal_strength", 29: "mcc", 30: "mnc",
-  31: "lac", 32: "cell_id", 33: "gsm_nmr_ 1st", 34: "lac_nmr_1st", 35: "cell_id_nmr_1st",
-  36: "gsm_nmr_ 2nd", 37: "lac_nmr_2nd", 38: "cell_id_nmr_2nd",
-  39: "gsm_nmr_ 3rd", 40: "lac_nmr_3rd", 41: "cell_id_nmr_3rd",
-  42: "gsm_nmr_ 4th", 43: "lac_nmr_4th", 44: "cell_id_nmr_4th", 45: "digital_input",
+  31: "lac", 32: "cell_id", 33: "gsm_nmr_1st", 34: "lac_nmr_1st", 35: "cell_id_nmr_1st",
+  36: "gsm_nmr_2nd", 37: "lac_nmr_2nd", 38: "cell_id_nmr_2nd",
+  39: "gsm_nmr_3rd", 40: "lac_nmr_3rd", 41: "cell_id_nmr_3rd",
+  42: "gsm_nmr_4th", 43: "lac_nmr_4th", 44: "cell_id_nmr_4th", 45: "digital_input",
   46: "digital_output", 47: "frame_number", 48: "analog_input1", 49: "analog_input2",
   50: "delta_distance", 51: "ota_response", 52: "checksum"
 };
@@ -46,79 +44,73 @@ const healthFieldMap = {
   10: "digital_inputs", 11: "analog_input1", 12: "analog_input2_checksum"
 };
 
-// Helper to enrich fields with index + field name
-function enrichFields(fields, fieldMap) {
-  return fields.map((val, idx) => ({
-    //index: idx,
-    field: fieldMap[idx] || null,
-    value: val.trim()
-  }));
+// Helper: convert fields into key/value object
+function buildParsedObject(fields, fieldMap) {
+  const obj = {};
+  fields.forEach((val, idx) => {
+    const key = fieldMap[idx] || `field_${idx}`;
+    obj[key] = val.trim();
+  });
+  return obj;
 }
 
 // Main parser
 function parsePacket(rawPacket) {
   const fields = rawPacket.split(",").map(f => f.trim());
 
-  // LOGIN PACKET: IMEI at index 5, AIS140 marker at index 7
+  // LOGIN PACKET
   if (fields[5] === "AIS140") {
     return {
       data_type: "Login",
       imei: fields[3],
-      parsed_fields: enrichFields(fields, loginFieldMap)
+      parsed_data: buildParsedObject(fields, loginFieldMap)
     };
   }
 
-  // EMERGENCY PACKET: EMR/SEM marker at index 2
+  // EMERGENCY PACKET
   if (fields[2] === "EMR" || fields[2] === "SEM") {
     return {
       data_type: "Emergency",
       imei: fields[3],
-      parsed_fields: enrichFields(fields, emergencyFieldMap)
+      parsed_data: buildParsedObject(fields, emergencyFieldMap)
     };
   }
 
-  // TRACKING PACKET: packet type at index 4
+  // TRACKING PACKET
   const packetTypes = ["NR","EA","TA","HP","IN","IF","BD","BR","BL"];
   if (packetTypes.includes(fields[3])) {
     return {
       data_type: "Tracking",
       imei: fields[6],
-      parsed_fields: enrichFields(fields, trackingFieldMap)
+      parsed_data: buildParsedObject(fields, trackingFieldMap)
     };
   }
 
-  // HEALTH PACKET: exact field count = 13, index 7 ≠ AIS140
-  if (fields.length = 13 && fields[5] !== "AIS140") {
+  // HEALTH PACKET
+  if (fields.length === 13 && fields[5] !== "AIS140") {
     return {
       data_type: "Health",
       imei: fields[3],
-      parsed_fields: enrichFields(fields, healthFieldMap)
+      parsed_data: buildParsedObject(fields, healthFieldMap)
     };
   }
 
   // UNKNOWN fallback
-  return {
-    data_type: "Unknown",
-    imei: null,
-    parsed_fields: fields.map((val, idx) => ({ 
-        //index: idx, 
-        field: null, 
-        value: val }))
-  };
+  const obj = {};
+  fields.forEach((val, idx) => { obj[`field_${idx}`] = val; });
+  return { data_type: "Unknown", imei: null, parsed_data: obj };
 }
 
 // Verbose logger for manual verification
 function logParsedPacket(parsed, receivedAt) {
-  if (!VERBOSE) return; // only log if VERBOSE_LOGGING=true
+  if (!VERBOSE) return;
 
-  // VERBOSE_LOGGING = TRUE code block
   console.log("=== GPS Packet Summary ===");
-  console.log(`Type: ${parsed.data_type}`);
-  console.log(`IMEI: ${parsed.imei || "N/A"}`);
+  console.log(`Type: ${parsed.data_type} : IMEI: ${parsed.imei || "N/A"} : VENDOR_ID: ${parsed.vendor_id || "N/A"}`);
   console.log(`Received At: ${receivedAt.toISOString()}`);
   console.log("=== Parsed Fields ===");
-  parsed.parsed_fields.forEach(field => {
-    console.log(`${field.index}: ${field.field || "unknown"} = ${field.value}`);
+  Object.entries(parsed.parsed_data).forEach(([key, value]) => {
+    console.log(`${key}: ${value}`);
   });
 }
 

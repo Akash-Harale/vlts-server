@@ -1,26 +1,25 @@
 // models/gpsRawData.js
-const mongoose = require('mongoose');
+// Unified schema to store raw packets + parsed data
+// 28 March 2026
+
+const mongoose = require("mongoose");
 
 const gpsRawDataSchema = new mongoose.Schema({
-    imei: { type: String, required: true },
-    raw_payload: { type: Object, required: true },
-    raw_data: { type: Buffer },
-    received_at: { type: Date, default: Date.now },
-    processed: { type: Boolean, default: false },
-    error: { type: String, default: null }
-});
+  imei: { type: String, index: true }, // extracted IMEI
+  vendor_id: { type: String, index: true },
+  data_type: {
+    type: String,
+    enum: ["Login", "Tracking", "Health", "Emergency", "Unknown"],
+    required: true
+  },
+  raw_data: { type: String, required: true },   // original string
+  parsed_data: { type: Object, required: true }, // parsed fields as object
+  received_at: { type: Date, default: Date.now, index: true },
+  processed: { type: Boolean, default: false }  // enrichment flag
+}, { collection: "gpsRawData" });
 
+// Indexes for faster queries
 gpsRawDataSchema.index({ imei: 1, received_at: -1 });
+gpsRawDataSchema.index({ vendor_id: 1, received_at: -1 });
 
-module.exports = mongoose.model('GPSRawData', gpsRawDataSchema);
-
-/*
-Sample Data:
-
-{
-  "imei": "356938035643809",
-  "raw_payload": { "lat": 28.6139, "lon": 77.2090, "speed": 65, "direction": 142 },
-  "received_at": "2026-02-28T00:45:00Z"
-}
-*/
-
+module.exports = mongoose.model("GpsRawData", gpsRawDataSchema);

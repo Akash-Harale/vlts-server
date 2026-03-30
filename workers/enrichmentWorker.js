@@ -315,12 +315,11 @@ module.exports = { startEnrichmentLoop };
 
 */
 
-// workers/enrichmentWorker.js
-// Date: March 2026 - Refactored for unified gpsData store
 
+// Updated code with Navitech gps device - data enrichment logic
+// Date: 30 March 2026
 
-
-const GPSData = require('../models/gpsData');          // unified raw+parsed schema
+const GPSData = require('../models/gpsRawData');          // unified raw+parsed schema
 const GPSDevice = require('../models/gpsDevice');
 const Vehicle = require('../models/vehicle');
 const VehicleDeviceMap = require('../models/vehicleDeviceMap');
@@ -431,11 +430,11 @@ async function checkGeofence(routeId, locationPoint) {
 // ── Build enriched telemetry document ──────────────────────
 
 async function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, sessionId) {
-  // Extract lat/lon/speed/direction from parsed_fields
-  const lat = Number(rawDoc.parsed_fields.find(f => f.field === 'latitude')?.value || 0);
-  const lon = Number(rawDoc.parsed_fields.find(f => f.field === 'longitude')?.value || 0);
-  const speed = Number(rawDoc.parsed_fields.find(f => f.field === 'speed')?.value || 0);
-  const direction = rawDoc.parsed_fields.find(f => f.field === 'heading')?.value || null;
+  // Extract lat/lon/speed/direction from parsed_data object
+  const lat = Number(rawDoc.parsed_data.latitude || 0);
+  const lon = Number(rawDoc.parsed_data.longitude || 0);
+  const speed = Number(rawDoc.parsed_data.speed || 0);
+  const direction = rawDoc.parsed_data.heading || null;
 
   const locationPoint = { type: 'Point', coordinates: [lon, lat] };
   const lastUpdated = rawDoc.received_at || new Date();
@@ -531,11 +530,8 @@ async function processRawPackets(wss) {
 
   if (!rawDocs.length) return;
 
-  //console.log(`[enrichment] Processing ${rawDocs.length} tracking packets`);
-
   for (const rawDoc of rawDocs) {
     try {
-
       // Print parsed fields for manual verification
       logParsedPacket(rawDoc, rawDoc.received_at);
 

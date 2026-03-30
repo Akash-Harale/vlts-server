@@ -1,10 +1,10 @@
 // services/tcpServer.js
-// 28/03/2026
+// 30/03/2026
 
 require("dotenv").config();
 const net = require("net");
 const connectDB = require("../config/db");
-const GpsData = require("../models/gpsData");   // unified schema
+const GpsRawData = require("../models/gpsRawData");   // unified schema
 const { parsePacket, logParsedPacket } = require("../utils/parserUtil"); // parser utility
 
 // Initialize MongoDB connection once when service starts
@@ -32,30 +32,29 @@ const tcpServer = net.createServer(socket => {
       // Print raw data in multiple views for debugging
       console.log("=== RAW GPS DATA (ASCII String) ===");
       console.log(rawStr);
-      //console.log("=== RAW GPS DATA (Hex Dump) ===");
-      //console.log(data.toString("hex"));
 
       // Parse packet immediately
       const parsed = parsePacket(rawStr);
 
       // Save raw + parsed together in unified schema
-      const gpsDoc = new GpsData({
-        raw_packet: rawStr,              // original string
-        imei: parsed.imei,               // extracted IMEI
-        data_type: parsed.data_type,     // Login, Tracking, Health, Emergency, Unknown
-        parsed_fields: parsed.parsed_fields, // full audit trace {index, field, value}
-        processed: false,                // enrichment flag
+      const gpsDoc = new GpsRawData({
+        raw_data: rawStr,              // original string
+        imei: parsed.imei,             // extracted IMEI
+        vendor_id: parsed.parsed_data.vendor_id || null,
+        data_type: parsed.data_type,   // Login, Tracking, Health, Emergency, Unknown
+        parsed_data: parsed.parsed_data, // key/value object
+        processed: false,              // enrichment flag
         received_at: new Date()
       });
 
       await gpsDoc.save();
-      
+
       // Enhanced logging
       log("INFO", `GPS packet stored: ${gpsDoc._id} [${parsed.data_type}]`);
-      
-     // Use the helper for clean logging with VERBOSE_LOGGING flag set to True/False
+
+      // Use the helper for clean logging with VERBOSE_LOGGING flag
       logParsedPacket(parsed, gpsDoc.received_at);
-      
+
     } catch (err) {
       log("ERROR", "Error storing GPS packet", err);
     }
