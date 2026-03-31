@@ -24,7 +24,8 @@ const telemetrySchema = new mongoose.Schema({
     position_name: { type: String, default: 'Unknown' },
     overspeed_count: { type: Number, default: 0 },
     geofence_crossing_count: { type: Number, default: 0 },
-    raw_payload: Object
+    raw_payload: Object,
+    created_at: { type: Date, default: Date.now },
 });
 
 telemetrySchema.index({ location: "2dsphere" }); // for geospatial queries
