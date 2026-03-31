@@ -483,7 +483,7 @@ async function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tri
     idle_time_minutes,
     geofence_status: geofenceStatus,
     geofence_crossing_count: geofenceCrossingCount,
-    raw_payload: rawDoc // keep full raw doc for audit
+    //raw_payload: rawDoc // keep full raw doc for audit  --- uncomment in production live
   });
 }
 

@@ -66,11 +66,12 @@ function broadcastTelemetry(wss, telemetryDoc) {
     ? telemetryDoc.toObject()
     : telemetryDoc;
 
-  console.log('[broadcastTelemetry] Incoming telemetry:', payload);
+  //console.log('[broadcastTelemetry] Incoming telemetry:', payload);
 
   // Helper to send payload to all matching clients
   const sendPayload = (geofenceStatus) => {
     const enrichedPayload = { type: 'live', ...payload, geofence_status: geofenceStatus };
+
     console.log('[broadcastTelemetry] Broadcasting payload:', enrichedPayload);
 
     wss.clients.forEach((client) => {
