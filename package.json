@@ -5,8 +5,8 @@
   "bin": "server.js",
   "scripts": {
     "start": "node server.js",
-    "tcpserver":"node ./services/tcpServer.js",
-    "gpssimulator":"node ./simulator/gpsSimulator.js",
+    "tcpserver": "node ./services/tcpServer.js",
+    "gpssimulator": "node ./simulator/gpsSimulator.js",
     "start:all": "npm run tcpserver & npm run gpssimulator & npm start",
     "dev": "nodemon server.js"
   },
@@ -25,6 +25,7 @@
     "axios": "^1.6.7",
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.2",
+    "concaveman": "^1.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

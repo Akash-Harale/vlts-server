@@ -1,4 +1,6 @@
 // /controllers/authController.js
+// Use for driver login/logout (no JWT for now, just return user details)
+
 const User = require('../models/user');
 
 exports.login = async (req, res) => {
