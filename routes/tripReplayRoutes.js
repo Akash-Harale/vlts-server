@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const replayController = require('../controllers/tripReplayController');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // GET /api/replay?vehicle_id=<id>&route_id=<id>
 // Replay by vehicle_id + route_id OR
@@ -36,7 +37,7 @@ Supports query by vehicle_id or registration_number, and route_id or route_name.
 Returns ordered list of positions with geofence status.
 Admin dashboard can use this to animate past trips for replay.
 */
-router.get('/replay', replayController.getTripHistory);
+router.get('/replay', authMiddleware(["read_trips"]), replayController.getTripHistory);
 
 module.exports = router;
 

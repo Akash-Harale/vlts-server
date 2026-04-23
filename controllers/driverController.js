@@ -1,6 +1,8 @@
 // /controllers/driverController.js
 const Driver = require('../models/driver');
 const User = require('../models/user');
+const Employee = require('../models/employeeModel');
+const Role = require('../models/roleModel');
 const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
@@ -14,35 +16,76 @@ const getMeta = (req) => ({
   trace_id: req.headers['x-request-id'] || req.trace_id || null
 });
 
+  const MAX_RETRIES = parseInt(process.env.TRANSACTION_MAX_RETRIES || "3", 10);
+  const BASE_DELAY_MS = parseInt(process.env.TRANSACTION_BACKOFF_MS || "100", 10);
 
-// CREATE Driver + User
+// CREATE Driver + Employee + User
 exports.createDriver = async (req, res) => {
   const meta = getMeta(req);
   let attempt = 0;
 
   while (attempt < MAX_RETRIES) {
     const session = await mongoose.startSession();
-    let savedDriver, savedUser;
-
+    let savedDriver, savedEmployee, savedUser;
+console.log('createDriver: called with meta: ', meta);
     try {
       attempt++;
 
       await session.withTransaction(async () => {
-        const { driver_name, driver_license, mobile_number, email_id, user_id, password } = req.body;
+        const { driver_name, driver_license,
+           mobile_number, email_id, user_id, password } = req.body;
 
-        if (!user_id || !password) {
-          const err = new Error("user_id and password are required");
+        if (!email_id || !password) {
+          const err = new Error("email and password are required");
           err.statusCode = 400;
           throw err;
         }
 
-        const driver = new Driver({ driver_name, driver_license, mobile_number, email_id, user_id });
+        // Create Employee
+        const employee = new Employee({
+          name: driver_name,
+          email: email_id,
+          mobile_number: mobile_number,
+          designation: "Driver",
+          scope: "client",
+          tenant_id: meta.tenant_id,
+          client_profile_id: req.user?.client_profile_id
+        });
+        await employee.save({ session });
+
+        // Create Driver
+        const driver = new Driver({ 
+          driver_name, 
+          driver_license, 
+          mobile_number, 
+          email_id, 
+          user_id: email_id // Use email as user_id for backward compatibility
+        });
         await driver.save({ session });
 
-        const user = new User({ user_id, password, driver_id: driver._id });
+        // Find driver role
+        // const driverRole = await Role.findOne({ 
+        //   name: "driver" }).session(session);
+        // if (!driverRole) {
+        //   const err = new Error("Driver role not found");
+        //   err.statusCode = 500;
+        //   throw err;
+        // }
+
+        // Create User
+        const user = new User({ 
+          employee_id: employee._id,
+          email: email_id, 
+          password, 
+          //role: driverRole._id,
+          scope: "client",
+          tenant_id: meta.tenant_id,
+          client_profile_id: req.user?.client_profile_id
+        });
         await user.save({ session });
 
         savedDriver = driver;
+        savedEmployee = employee;
         savedUser = user;
       });
 
@@ -61,17 +104,18 @@ exports.createDriver = async (req, res) => {
       );
 
       return res.status(201).json({
-        message: 'Driver and User created successfully',
+        message: 'Driver, Employee and User created successfully',
         driver: savedDriver,
-        user: { user_id: savedUser.user_id, driver_id: savedDriver._id }
+        employee: savedEmployee,
+        user: { email: savedUser.email, employee_id: savedEmployee._id }
       });
 
     } catch (err) {
       session.endSession();
-
-      if (err.statusCode === 400) {
+console.error("createDriver error:", err);
+      if (err.statusCode === 400 || err.statusCode === 500) {
         await logger.audit(meta.emp_id, meta.emp_name, meta.role, "create", "driver", err.message, "failed", meta.tenant_id, meta.trace_id);
-        return res.status(400).json({ error: err.message });
+        return res.status(err.statusCode).json({ error: err.message });
       }
 
       if (err.errorLabels?.includes("TransientTransactionError") && attempt < MAX_RETRIES) {
@@ -172,7 +216,7 @@ console.log('updateDriver: req.params.id: ', req.params.id);
   }
 };
 
-// DELETE Driver + User
+// DELETE Driver + Employee + User
 exports.deleteDriver = async (req, res) => {
   const meta = getMeta(req);
   let attempt = 0;
@@ -180,7 +224,7 @@ exports.deleteDriver = async (req, res) => {
   while (attempt < MAX_RETRIES) {
     const session = await mongoose.startSession();
     let deletedDriver;
-console.log('deleteDriver: req.params.id: ', req.params.id);
+    console.log('deleteDriver: req.params.id: ', req.params.id);
     try {
       attempt++;
 
@@ -193,7 +237,17 @@ console.log('deleteDriver: req.params.id: ', req.params.id);
           throw err;
         }
 
-        await User.deleteOne({ driver_id: driver._id }).session(session);
+        // Find User by email
+        const user = await User.findOne({ email: driver.email_id }).session(session);
+        if (user) {
+          // Delete User
+          await User.findByIdAndDelete(user._id).session(session);
+          
+          // Delete Employee
+          await Employee.findByIdAndDelete(user.employee_id).session(session);
+        }
+        
+        // Delete Driver
         await Driver.findByIdAndDelete(req.params.id).session(session);
 
         deletedDriver = driver;
@@ -213,10 +267,10 @@ console.log('deleteDriver: req.params.id: ', req.params.id);
         meta.trace_id
       );
 
-      return res.json({ message: 'Driver and User deleted successfully' });
+      return res.json({ message: 'Driver, Employee and User deleted successfully' });
 
     } catch (err) {
-      cosole.error("deleteDriver error:", err);
+      console.error("deleteDriver error:", err);
       session.endSession();
 
       if (err.statusCode === 404) {

@@ -2,11 +2,13 @@ const express = require("express");
 const { param, query } = require("express-validator");
 const router = express.Router();
 const tripController = require("../controllers/tripController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Create a new active trip
 // POST /api/trips
 router.post(
   "/trips",
+  authMiddleware(["create_trips"]),
   tripController.createTrip
 );
 
@@ -14,6 +16,7 @@ router.post(
 // GET /api/trips
 router.get(
   "/trips",
+  authMiddleware(["read_trips"]),
   [
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1 })
@@ -25,6 +28,7 @@ router.get(
 // GET /api/vehicles/:vehicleId/trips
 router.get(
   "/vehicles/:vehicleId/trips",
+  authMiddleware(["read_trips"]),
   [param("vehicleId").isMongoId().withMessage("Invalid vehicle ID")],
   tripController.fetchTripsByVehicle
 );
@@ -33,6 +37,7 @@ router.get(
 // GET /api/trips/:tripId/geometry
 router.get(
   "/trips/:tripId/geometry",
+  authMiddleware(["read_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripController.fetchRouteGeometry
 );
@@ -41,6 +46,7 @@ router.get(
 // GET /api/trips/status
 router.get(
   "/trips/status",
+  authMiddleware(["read_trips"]),
   [
     query("trip_approval_status").optional().isString(),
     query("trip_dep_status").optional().isString(),
@@ -53,6 +59,7 @@ router.get(
 // PUT /api/trips/:tripId/status
 router.put(
   "/trips/:tripId/status",
+  authMiddleware(["update_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripController.updateTripStatus
 );

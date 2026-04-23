@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const driverController = require('../controllers/driverController');
+const authMiddleware = require('../middleware/authMiddleware');
 
 /*
 POST /api/drivers
@@ -33,17 +34,17 @@ RESPONSE:
   }
 }
 */
-router.post('/drivers', driverController.createDriver);       // Create
+router.post('/drivers', authMiddleware(["create_driver"]), driverController.createDriver);       // Create
 
 /*
 GET /api/drivers
 */
-router.get('/drivers', driverController.getAllDrivers);       // Read all
+router.get('/drivers', authMiddleware(["read_driver"]), driverController.getAllDrivers);       // Read all
 
 /*
 GET /api/drivers/67a0f1c2e4b1a9d123456789
 */
-router.get('/drivers/:id', driverController.getDriverById);   // Read one
+router.get('/drivers/:id', authMiddleware(["read_driver"]), driverController.getDriverById);   // Read one
 
 /*
 PUT /api/drivers/67a0f1c2e4b1a9d123456789
@@ -55,12 +56,12 @@ Content-Type: application/json
   "email_id": "ramesh.updated@example.com"
 }
 */
-router.put('/drivers/:id', driverController.updateDriver);    // Update
+router.put('/drivers/:id', authMiddleware(["update_driver"]), driverController.updateDriver);    // Update
 
 /*
 DELETE /api/drivers/67a0f1c2e4b1a9d123456789
 */
-router.delete('/drivers/:id', driverController.deleteDriver); // Delete
+router.delete('/drivers/:id', authMiddleware(["delete_driver"]), driverController.deleteDriver); // Delete
 
 module.exports = router;
 

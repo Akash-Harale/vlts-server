@@ -33,7 +33,7 @@ const tripReplayRoutes = require("./routes/tripReplayRoutes");
 // Import route files
 const driverRoutes = require("./routes/driverRoutes");
 const driverVehicleRoutes = require("./routes/driverVehicleRoutes");
-const authRoutes = require("./routes/authRoutes");
+const ClientAuthRoutes = require("./routes/ClientAuthRoutes");
 const driverUserRoutes = require("./routes/driverUserRoutes");
 const gpsDeviceRoutes = require("./routes/gpsDeviceRoutes");
 const vehicleDeviceMapRoutes = require("./routes/vehicleDeviceMapRoutes");
@@ -100,7 +100,7 @@ app.use("/api", tripReplayRoutes);
 // Route entries
 app.use("/api", driverRoutes); // Driver CRUD
 app.use("/api", driverVehicleRoutes); // Driver-Vehicle Assignment CRUD
-app.use("/api", authRoutes);
+app.use("/api", ClientAuthRoutes);
 app.use("/api/", driverUserRoutes);
 
 app.use("/api/gps", gpsDeviceRoutes);
