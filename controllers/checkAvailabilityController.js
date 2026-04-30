@@ -3,6 +3,7 @@ const VehicleState = require("../models/vehicleState");
 const Vehicle = require("../models/vehicle");
 const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
 const Driver = require("../models/driver");
+const Employee = require("../models/employeeModel");
 const logger = require("../utils/logger");
 
 const getMeta = (req) => ({
@@ -25,6 +26,19 @@ exports.checkAvailability = async (req, res) => {
     const depDate = new Date(departure_date);
     const arrDate = new Date(arrival_date);
 
+    // ── Client scoping ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
+    let allowedVehicleIds = null;
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      const matchingVehicles = await Vehicle.find({ client_id: clientProfileId }, "_id");
+      allowedVehicleIds = matchingVehicles.map(v => v._id);
+    }
+
     // -------- STEP 1: Try with place --------
     let query = {
       place_of_availability: {
@@ -35,6 +49,10 @@ exports.checkAvailability = async (req, res) => {
       status: "ACTIVE"
     };
 
+    if (allowedVehicleIds !== null) {
+      query.vehicle_id = { $in: allowedVehicleIds };
+    }
+
     let availableStates = await VehicleState.find(query)
       .populate("vehicle_id", "registration_number make model");
 
@@ -44,10 +62,17 @@ exports.checkAvailability = async (req, res) => {
     if (availableStates.length === 0) {
       console.log("No vehicles found for place → fallback to all");
 
-      availableStates = await VehicleState.find({
+      let fallbackQuery = {
         next_available_date: { $lte: arrDate },
         status: "ACTIVE"
-      }).populate("vehicle_id", "registration_number make model");
+      };
+
+      if (allowedVehicleIds !== null) {
+        fallbackQuery.vehicle_id = { $in: allowedVehicleIds };
+      }
+
+      availableStates = await VehicleState.find(fallbackQuery)
+        .populate("vehicle_id", "registration_number make model");
     }
 
     // -------- STEP 3: Build result --------
@@ -126,10 +151,23 @@ exports.getAvailableDrivers = async (req, res) => {
 
     const busyDriverIds = busyAssignments.map(a => a.driver_id);
 
+    // ── Client scoping ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
+    let driverFilter = { _id: { $nin: busyDriverIds } };
+
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      const clientEmployees = await Employee.find({ client_profile_id: clientProfileId }, "email");
+      const clientEmails = clientEmployees.map(e => e.email);
+      driverFilter.email_id = { $in: clientEmails };
+    }
+
     // Find drivers not in busyDriverIds
-    const availableDrivers = await Driver.find({
-      _id: { $nin: busyDriverIds }
-    }).select("driver_name mobile_number email_id");
+    const availableDrivers = await Driver.find(driverFilter).select("driver_name mobile_number email_id");
 
     console.log(`Found ${availableDrivers.length} available drivers`);
 
@@ -194,8 +232,20 @@ exports.getAvailableVehicles = async (req, res) => {
       });
     }
 
+    // ── Client scoping ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
+    let vehicleFilter = {};
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      vehicleFilter = { client_id: clientProfileId };
+    }
+
     // Step 1: Get all vehicles
-    const allVehicles = await Vehicle.find().select("registration_number make model");
+    const allVehicles = await Vehicle.find(vehicleFilter).select("registration_number make model");
 
     // Step 2: Find vehicles with overlapping assignments in this window
     const busyAssignments = await DriverVehicleAssignment.find({
