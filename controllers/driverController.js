@@ -27,7 +27,7 @@ exports.createDriver = async (req, res) => {
   while (attempt < MAX_RETRIES) {
     const session = await mongoose.startSession();
     let savedDriver, savedEmployee, savedUser;
-console.log('createDriver: called with meta: ', meta);
+
     try {
       attempt++;
 
@@ -133,9 +133,27 @@ console.error("createDriver error:", err);
 // READ All Drivers
 exports.getAllDrivers = async (req, res) => {
   const meta = getMeta(req);
-console.log('getAllDrivers: called with meta: ', meta);
+  console.log('getAllDrivers: called with meta: ', meta);
   try {
-    const drivers = await Driver.find();
+    // ── Client scoping: clients may only see drivers belonging to their account ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
+    let drivers;
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      // Find all employees that belong to this client, then fetch matching drivers by email
+      const clientEmployees = await Employee.find(
+        { client_profile_id: clientProfileId },
+        "email"
+      );
+      const clientEmails = clientEmployees.map((e) => e.email);
+      drivers = await Driver.find({ email_id: { $in: clientEmails } });
+    } else {
+      drivers = await Driver.find();
+    }
 
     await logger.audit(
       meta.emp_id,
@@ -143,7 +161,7 @@ console.log('getAllDrivers: called with meta: ', meta);
       meta.role,
       "read",
       "driver",
-      `Fetched ${drivers.length} drivers`,
+      `Fetched ${drivers.length} drivers${isClientRole ? ` for client ${clientProfileId}` : ""}`,
       "success",
       meta.tenant_id,
       meta.trace_id
@@ -176,6 +194,23 @@ exports.getDriverById = async (req, res) => {
     if (!driver) {
       await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
       return res.status(404).json({ error: 'Driver not found' });
+    }
+
+    // ── Client scoping: enforce ownership via Employee link ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      const employee = await Employee.findOne({
+        email: driver.email_id,
+        client_profile_id: clientProfileId
+      });
+      if (!employee) {
+        return res.status(403).json({ error: "Access denied: driver does not belong to your account" });
+      }
     }
 
     await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", `Fetched driver ${driver.driver_name}`, "success", meta.tenant_id, meta.trace_id);

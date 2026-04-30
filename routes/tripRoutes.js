@@ -5,9 +5,9 @@ const tripController = require("../controllers/tripController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 // Create a new active trip
-// POST /api/trips
+// POST /api/trips 
 router.post(
-  "/trips",
+  "/",
   authMiddleware(["create_trips"]),
   tripController.createTrip
 );
@@ -15,7 +15,7 @@ router.post(
 // Get all active trips (summary with vehicle & driver mapping)
 // GET /api/trips
 router.get(
-  "/trips",
+  "/",
   authMiddleware(["read_trips"]),
   [
     query("page").optional().isInt({ min: 1 }),
@@ -36,7 +36,7 @@ router.get(
 // Get trip geometry by tripId
 // GET /api/trips/:tripId/geometry
 router.get(
-  "/trips/:tripId/geometry",
+  "/:tripId/geometry",
   authMiddleware(["read_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripController.fetchRouteGeometry
@@ -45,7 +45,7 @@ router.get(
 // Get trips filtered by approval/dep/arrival status
 // GET /api/trips/status
 router.get(
-  "/trips/status",
+  "/status",
   authMiddleware(["read_trips"]),
   [
     query("trip_approval_status").optional().isString(),
@@ -58,7 +58,7 @@ router.get(
 // Update trip status (approval/dep/arrival)
 // PUT /api/trips/:tripId/status
 router.put(
-  "/trips/:tripId/status",
+  "/:tripId/status",
   authMiddleware(["update_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripController.updateTripStatus

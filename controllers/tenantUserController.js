@@ -6,7 +6,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const Employee = require('../models/employeeModel');
-const ClientProfile = require('../models/client.Model');
+const ClientProfile = require('../models/client.model');
 const Role = require('../models/roleModel');
 const logger = require('../utils/logger');
 //const { generateEmpId } = require('../utils/empIdGenerator');

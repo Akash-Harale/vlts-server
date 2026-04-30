@@ -45,8 +45,6 @@ function authMiddleware(requiredPrivileges = []) {
         return res.status(401).json({ error: "Invalid or expired token" });
       }
 
-      console.log('authMiddleware: Header decoded: ', decoded);
-
       // Attach decoded payload to request
       // Expected payload: { id, role, emp_id, tenant_id, client_profile_id, privileges }
       req.user = decoded;

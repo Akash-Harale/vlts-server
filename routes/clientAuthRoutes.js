@@ -9,7 +9,9 @@ const router = express.Router();
 const {
   clientLogin,
   clientLogout,
-  clientRefresh
+  clientRefresh,
+  getClientProfile,
+  getMyProfile
 } = require('../controllers/clientAuthController');
 
 const authMiddleware = require('../middleware/authMiddleware');
@@ -22,6 +24,12 @@ router.post('/logout', authMiddleware(), clientLogout);
 
 // Client refresh
 router.post('/refresh', clientRefresh);
+
+// Client profile (JWT claims only — id, role, privileges, etc.)
+router.get('/profile', authMiddleware(), getClientProfile);
+
+// Client's own full org profile + employee record (uses client_profile_id from JWT)
+router.get('/me', authMiddleware(), getMyProfile);
 
 module.exports = router;
 

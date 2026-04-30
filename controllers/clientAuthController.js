@@ -2,13 +2,16 @@
 // 21 March 2026
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
+const Client = require('../models/client.model');
+const ClientProfile = require('../models/clientProfileModel');
+const Employee = require('../models/employeeModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const logger = require('../utils/logger');
 const { blacklistToken, verifyRefreshToken } = require('../utils/tokenService');
 
 function generateTokens(user) {
-  const accessToken = jwt.sign(
+  const accessToken = jwt.sign( 
     {
       id: user._id,
       role: user.role.name,
@@ -77,6 +80,87 @@ exports.clientLogin = async (req, res, next) => {
 };
 
 
+
+exports.getClientProfile = async (req, res) => {
+  try {
+    // req.user is populated by authMiddleware (JWT payload)
+    const { id, role, employee_id, tenant_id, client_profile_id, privileges } = req.user;
+
+    // Email isn't embedded in the JWT — fetch it from the DB
+    const userDoc = await User.findById(id, 'email');
+    const email = userDoc?.email || null;
+
+    return res.json({
+      user: { id, role, email, employee_id, tenant_id, client_profile_id, privileges }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Could not retrieve profile' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/client-auth/me
+// Returns the logged-in client's full organisation profile (Client document)
+// plus their own Employee record. No params needed — uses JWT claims only.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getMyProfile = async (req, res) => {
+  console.log('getMyProfile: req.user', req.user);
+  try {
+    const { id, client_profile_id, employee_id, tenant_id, role, privileges } = req.user;
+
+    if (!client_profile_id) {
+      return res.status(403).json({ error: 'No client profile linked to this account' });
+    }
+
+    const clientProfile = await ClientProfile.findById(client_profile_id);
+    console.log('getMyProfile: clientProfile', clientProfile);
+    if (!clientProfile) {
+      return res.status(404).json({ error: 'Client profile not found' });
+    }
+
+    const employeeRecord = employee_id
+      ? await Employee.findById(employee_id)
+          .lean()
+          .select('name email mobile_number designation scope tenant_id client_profile_id')
+      : null;
+
+    await logger.audit(
+      employee_id?.toString() || 'SYSTEM',
+      employeeRecord?.name || 'Client User',
+      role,
+      'read',
+      'client',
+      `Client fetched own profile: ${clientProfile.entity_name}`,
+      'success',
+      tenant_id,
+      req.trace_id
+    );
+
+    return res.json({
+      user: {
+        id,
+        role,
+        tenant_id,
+        client_profile_id,
+        privileges
+      },
+      organisation: clientProfile,
+      employee: employeeRecord
+    });
+  } catch (err) {
+    await logger.error(
+      req.user?.employee_id || 'SYSTEM',
+      req.user?.employee_id?.name || 'SYSTEM',
+      req.user?.role || 'unknown',
+      err,
+      'client',
+      req.user?.tenant_id || null,
+      req.trace_id,
+      500
+    );
+    return res.status(500).json({ error: 'Could not retrieve profile' });
+  }
+};
 
 exports.clientLogout = async (req, res, next) => {
   try {

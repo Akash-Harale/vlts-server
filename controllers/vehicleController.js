@@ -181,7 +181,27 @@ exports.registerVehicle = async (req, res) => {
 // ─────────────────────────────────────────────
 exports.getVehicles = async (req, res) => {
   try {
-    const states = await VehicleState.find().populate("vehicle_id");
+    // ── Client scoping: clients may only see their own vehicles ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
+    let vehicleFilter = {};
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      vehicleFilter = { client_id: clientProfileId };
+    }
+
+    // Find matching vehicle IDs first when scoping is required
+    let states;
+    if (isClientRole) {
+      const matchingVehicles = await Vehicle.find(vehicleFilter, "_id");
+      const vehicleIds = matchingVehicles.map((v) => v._id);
+      states = await VehicleState.find({ vehicle_id: { $in: vehicleIds } }).populate("vehicle_id");
+    } else {
+      states = await VehicleState.find().populate("vehicle_id");
+    }
 
     const result = states.map((vs) => ({
       vehicleId: vs?.vehicle_id?._id,
@@ -205,7 +225,7 @@ exports.getVehicles = async (req, res) => {
       req.user?.role || "unknown",
       "read",
       "vehicle",
-      `Retrieved ${result.length} vehicles`,
+      `Retrieved ${result.length} vehicles${isClientRole ? ` for client ${clientProfileId}` : ""}`,
       "success",
       req.user?.tenant_id || null,
       req.trace_id
@@ -236,6 +256,10 @@ exports.getVehicleById = async (req, res) => {
   try {
     const { vehicle_id, registration_number } = req.query;
 
+    // ── Client scoping ──
+    const isClientRole = req.user?.role?.startsWith("client_");
+    const clientProfileId = req.user?.client_profile_id;
+
     let vehicle;
     if (vehicle_id) {
       vehicle = await Vehicle.findById(vehicle_id);
@@ -247,6 +271,16 @@ exports.getVehicleById = async (req, res) => {
 
     if (!vehicle) {
       return res.status(404).json({ error: "Vehicle not found" });
+    }
+
+    // ── Enforce ownership for client roles ──
+    if (isClientRole) {
+      if (!clientProfileId) {
+        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+      }
+      if (vehicle.client_id?.toString() !== clientProfileId?.toString()) {
+        return res.status(403).json({ error: "Access denied: vehicle does not belong to your account" });
+      }
     }
 
     const vehicleState = await VehicleState.findOne({ vehicle_id: vehicle._id });

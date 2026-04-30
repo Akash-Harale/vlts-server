@@ -11,7 +11,7 @@ const {
   getClients,
   updateClient,
   deleteClient,getClientById
-} = require('../controllers/ClientController');
+} = require("../controllers/clientController");
 
 const authMiddleware = require('../middleware/authMiddleware');
 
