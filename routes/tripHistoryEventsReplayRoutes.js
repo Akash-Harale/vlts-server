@@ -7,12 +7,14 @@ const express = require("express");
 const { param } = require("express-validator");
 const router = express.Router();
 const tripHistoryEventsReplayController = require("../controllers/tripHistoryEventsReplayController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 console.log("[tripHistoryEventsReplayRoutes] Initializing trip history events replay routes...");
 
 // Replay trip events by trip ID
 router.get(
   "/trip/:tripId/replay",
+  authMiddleware(["read_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripHistoryEventsReplayController.replayTripEvents
 );

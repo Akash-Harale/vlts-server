@@ -10,10 +10,12 @@ const express = require("express");
 const { param, query } = require("express-validator");
 const router = express.Router();
 const tripHistoryController = require("../controllers/tripHistoryController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Get all completed trips (optionally filter by date range)
 router.get(
   "/trips-history",
+  authMiddleware(["read_trips"]),
   [
     query("startDate").optional().isISO8601().withMessage("Invalid startDate"),
     query("endDate").optional().isISO8601().withMessage("Invalid endDate")
@@ -23,7 +25,7 @@ router.get(
 
 // Get completed trip by ID
 router.get(
-  "/trips-history/:tripId",
+  "/trips-history/:tripId", authMiddleware(["read_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripHistoryController.getTripById
 );
@@ -31,6 +33,7 @@ router.get(
 // Get route geometry for a completed trip
 router.get(
   "/trips-history/:tripId/geometry",
+  authMiddleware(["read_trips"]),
   [param("tripId").isMongoId().withMessage("Invalid trip ID")],
   tripHistoryController.fetchRouteGeometry
 );
@@ -38,6 +41,7 @@ router.get(
 // Get completed trips by vehicle
 router.get(
   "/vehicles/:vehicleId/trips-history",
+  authMiddleware(["read_trips"]),
   [param("vehicleId").isMongoId().withMessage("Invalid vehicle ID")],
   tripHistoryController.getTripsByVehicle
 );
@@ -45,6 +49,7 @@ router.get(
 // Get completed trips by driver
 router.get(
   "/drivers/:driverId/trips-history",
+  authMiddleware(["read_trips"]),
   [param("driverId").isMongoId().withMessage("Invalid driver ID")],
   tripHistoryController.getTripsByDriver
 );

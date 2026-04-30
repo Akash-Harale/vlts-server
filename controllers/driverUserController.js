@@ -1,7 +1,9 @@
 // /controllers/driverUserController.js
 const User = require('../models/user');
+const logger = require('../utils/logger');
 
 exports.getAllDriversWithUserId = async (req, res) => {
+  console.log('driverUserController: getAllDriversWithUserId API called');
   try {
     // Find all users and populate driver details
     const users = await User.find().populate('driver_id');
@@ -20,10 +22,70 @@ exports.getAllDriversWithUserId = async (req, res) => {
       created_at: user.driver_id?.created_at
     }));
 
+    await logger.audit(
+      req.user?.employee_id || 'SYSTEM',
+      req.user?.employee_id?.name || 'SYSTEM',
+      req.user?.role || 'unknown',
+      'read',
+      'driverUser',
+      `All drivers with user IDs fetched, count: ${result.length}`,
+      'success',
+      req.user?.tenant_id || null,
+      req.trace_id
+    );
+
     res.json(result);
   } catch (err) {
     console.error('Error in getAllDriversWithUserId:', err);
+
+    await logger.error(
+      req.user?.employee_id || 'SYSTEM',
+      req.user?.employee_id?.name || 'SYSTEM',
+      req.user?.role || 'unknown',
+      err,
+      'driverUser',
+      req.user?.tenant_id || null,
+      req.trace_id,
+      500
+    );
+
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
+
+
+
+
+
+// // /controllers/driverUserController.js
+// const User = require('../models/user');
+
+// exports.getAllDriversWithUserId = async (req, res) => {
+//   try {
+//     // Find all users and populate driver details
+//     const users = await User.find().populate('driver_id');
+
+//     if (!users || users.length === 0) {
+//       return res.status(404).json({ error: 'No drivers found' });
+//     }
+
+//     // Map into clean response objects
+//     const result = users.map(user => ({
+//       user_id: user.user_id,
+//       driver_id: user.driver_id?._id,
+//       driver_name: user.driver_id?.driver_name,
+//       mobile_number: user.driver_id?.mobile_number,
+//       email_id: user.driver_id?.email_id,
+//       created_at: user.driver_id?.created_at
+//     }));
+
+//     res.json(result);
+//   } catch (err) {
+//     console.error('Error in getAllDriversWithUserId:', err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 

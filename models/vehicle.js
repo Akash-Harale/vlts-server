@@ -8,10 +8,11 @@ const vehicleSchema = new mongoose.Schema({
   client_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Client",
-    required: true,
+    required: true, 
   },
   make: { type: String },
   model: { type: String },
+  availability_place: { type: String },
   registration_number: { type: String, required: true, unique: true },
   manufacturing_year: { type: Number },
   chassis_number: { type: String, required: true, unique: true },
