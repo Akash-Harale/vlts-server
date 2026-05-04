@@ -107,6 +107,13 @@ exports.getMyProfile = async (req, res) => {
   console.log('getMyProfile: req.user', req.user);
   try {
     const { id, client_profile_id, employee_id, tenant_id, role, privileges } = req.user;
+    console.log("======================================================")
+    console.log('getMyProfile: id', id);
+    console.log('getMyProfile: client_profile_id', client_profile_id);
+    console.log('getMyProfile: employee_id', employee_id);
+    console.log('getMyProfile: tenant_id', tenant_id);
+    console.log('getMyProfile: role', role);
+    console.log('getMyProfile: privileges', privileges);
 
     if (!client_profile_id) {
       return res.status(403).json({ error: 'No client profile linked to this account' });
