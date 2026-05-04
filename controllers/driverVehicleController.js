@@ -63,6 +63,7 @@ exports.assignDriverToVehicle = async (req, res) => {
 
     // Create assignment
     const assignment = await DriverVehicleAssignment.create({
+      client_id: req.user?.client_profile_id,
       driver_id,
       vehicle_id,
       from_datetime: fromDate,
@@ -107,8 +108,11 @@ exports.assignDriverToVehicle = async (req, res) => {
 // GET ALL
 // =======================================
 exports.getAllAssignments = async (req, res) => {
+  console.log('driverVehicleController: getAllAssignments API: ', req.user);
   try {
-    const assignments = await DriverVehicleAssignment.find()
+    const assignments = await DriverVehicleAssignment.find({
+      client_id: req.user?.client_profile_id,
+    })
       .populate("driver_id", "driver_name mobile_number email_id")
       .populate("vehicle_id", "registration_number model")
       .populate("route_id", "place_from place_to");

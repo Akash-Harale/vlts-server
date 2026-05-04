@@ -68,6 +68,7 @@ exports.createTrip = async (req, res) => {
 
     // Insert Trip
     const assignment = new Trip({
+      client_id: req.user?.client_profile_id,
       vehicle_id: vehicleId,
       route_id: routeDoc._id,
       driver_id: driverId || null,
@@ -197,7 +198,8 @@ exports.fetchTrips = async (req, res) => {
     const query = {
       status: "ACTIVE",
       trip_dep_status: "DEPARTED",
-      trip_arrival_status: "AWAITED"
+      trip_arrival_status: "AWAITED",
+      client_id: req.user?.client_profile_id
     };
 
     const total = await Trip.countDocuments(query);
