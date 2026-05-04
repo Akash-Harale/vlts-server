@@ -15,8 +15,13 @@ const {
   createTenantUser,
   getTenantUsers,
   updateTenantUser,
-  deleteTenantUser,getTenantUserById
-} = require('../controllers/tenantUserController');
+  deleteTenantUser,getTenantUserById,
+  createUser,
+  getUserById,
+  getUsers,
+  updateUser,
+  deleteUser
+} = require('../controllers/user.controller');
 
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -29,11 +34,11 @@ router.post('/logout', authMiddleware(), tenantLogout);
 router.post('/refresh', tenantRefresh);
 
 // Tenant user management (Tenant Admin only)
-router.post('/users', authMiddleware(["create_user"]), createTenantUser);
-router.get('/users', authMiddleware(["read_user"]), getTenantUsers);
-router.get('/users/:id', authMiddleware(["read_user"]), getTenantUserById);
-router.put('/users/:id', authMiddleware(["update_user"]), updateTenantUser);
-router.delete('/users/:id', authMiddleware(["delete_user"]), deleteTenantUser);
+router.post('/users', authMiddleware(["create_user"]), createUser);
+router.get('/users', authMiddleware(["read_user"]), getUsers);
+router.get('/users/:id', authMiddleware(["read_user"]), getUserById);
+router.put('/users/:id', authMiddleware(["update_user"]), updateUser);
+router.delete('/users/:id', authMiddleware(["delete_user"]), deleteUser);
 
 module.exports = router;
 
