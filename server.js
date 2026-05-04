@@ -32,7 +32,6 @@ const tripReplayRoutes = require("./routes/tripReplayRoutes");
 const gpsAllocationRoutes = require("./routes/gpsAllocation.routes");
 
 // Import route files
-const driverRoutes = require("./routes/driverRoutes");
 const driverVehicleRoutes = require("./routes/driverVehicleRoutes");
 const ClientAuthRoutes = require("./routes/clientAuthRoutes");
 const driverUserRoutes = require("./routes/driverUserRoutes");
@@ -54,6 +53,8 @@ const gpsAlertRoutes = require("./routes/gpsAlertRoutes");
 const telemetryRoutes = require("./routes/telemetryRoutes");
 const telemetryStatsRoutes = require("./routes/telemetryStatsRoutes");
 const telemetryDashboardRoutes = require("./routes/telemetryDashboardRoutes");
+
+const driverRoutes = require("./routes/driverRoutes");
 
 // Import health check job
 require("./jobs/deviceHealthCheck");
@@ -98,7 +99,6 @@ app.use("/api", tripReplayRoutes);
 app.use("/api/gps-allocation", gpsAllocationRoutes);
 
 // Route entries
-app.use("/api", driverRoutes); // Driver CRUD
 app.use("/api", driverVehicleRoutes); // Driver-Vehicle Assignment CRUD
 
 app.use("/api/driver", driverRoutes); // Driver CRUD

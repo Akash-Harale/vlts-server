@@ -53,8 +53,6 @@ function authMiddleware(requiredPrivileges = []) {
       // Prefer privileges embedded in JWT to avoid DB lookup every time
       let userPrivileges = decoded.privileges;
 
-      console.log('authMiddleware: Decoded Privileges: ', userPrivileges);
-
       if (!userPrivileges || userPrivileges.length === 0) {
         // Fallback: fetch role document if privileges not in token
         const roleDoc = await Role.findOne({ name: decoded.role });
@@ -64,17 +62,14 @@ function authMiddleware(requiredPrivileges = []) {
         userPrivileges = roleDoc.privileges;
         req.user.privileges = userPrivileges;
 
-        console.log(' Im here .....1....req.user.privileges: ', req.user.privileges);
       }
 
-      console.log('requiredPrivileges: ', requiredPrivileges);
       
       // Step 4: Enforce required privileges
       if (requiredPrivileges.length > 0) {
         const hasPrivilege = requiredPrivileges.every(p =>
           userPrivileges.includes(p)
         );
-        console.log(' Im here .....2....hasPrivilege: ', hasPrivilege);
 
         if (!hasPrivilege) {
           return res.status(403).json({ error: "Insufficient privileges" });
