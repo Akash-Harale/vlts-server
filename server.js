@@ -29,6 +29,7 @@ const positionRoutes = require("./routes/positionRoutes");
 const deviationRoutes = require("./routes/deviationRoutes");
 const tripRoutes = require("./routes/tripRoutes");
 const tripReplayRoutes = require("./routes/tripReplayRoutes");
+const gpsAllocationRoutes = require("./routes/gpsAllocation.routes");
 
 // Import route files
 const driverRoutes = require("./routes/driverRoutes");
@@ -94,6 +95,10 @@ app.use("/api/vehicle", vehicleRoutes);
 app.use("/api", positionRoutes);
 app.use("/api", deviationRoutes);
 app.use("/api", tripReplayRoutes);
+app.use("/api/gps-allocation", gpsAllocationRoutes);
+
+// Route entries
+app.use("/api", driverRoutes); // Driver CRUD
 app.use("/api", driverVehicleRoutes); // Driver-Vehicle Assignment CRUD
 
 app.use("/api/driver", driverRoutes); // Driver CRUD
