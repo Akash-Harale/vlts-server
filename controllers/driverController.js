@@ -188,6 +188,11 @@ exports.getAllDrivers = async (req, res) => {
 exports.getDriverById = async (req, res) => {
   const meta = getMeta(req);
   console.log('getDriverById: req.params.id: ', req.params.id);
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
+    console.log('Driver not found');
+    return res.status(404).json({ error: 'Driver not found' });
+  }
   try {
     const driver = await Driver.findById(req.params.id);
 
