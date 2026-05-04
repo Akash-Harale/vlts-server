@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/driverUserController');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // GET /api/drivers-with-user
 // GET http://localhost:3000/api/drivers-with-user
@@ -28,6 +29,7 @@ JSON Response:
 ]
 
 */
-router.get('/driverswithuserid', controller.getAllDriversWithUserId);
+router.get('/driverswithuserid',
+   authMiddleware(["read_driver"]), controller.getAllDriversWithUserId);
 
 module.exports = router;

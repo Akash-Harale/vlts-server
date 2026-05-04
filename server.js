@@ -34,7 +34,7 @@ const gpsAllocationRoutes = require("./routes/gpsAllocation.routes");
 // Import route files
 const driverRoutes = require("./routes/driverRoutes");
 const driverVehicleRoutes = require("./routes/driverVehicleRoutes");
-const authRoutes = require("./routes/authRoutes");
+const ClientAuthRoutes = require("./routes/clientAuthRoutes");
 const driverUserRoutes = require("./routes/driverUserRoutes");
 const gpsDeviceRoutes = require("./routes/gpsDeviceRoutes");
 const vehicleDeviceMapRoutes = require("./routes/vehicleDeviceMapRoutes");
@@ -91,18 +91,19 @@ connectDB();
 
 // -------------------- Routes --------------------
 app.use("/api", routeRoutes);
-app.use("/api", routeRoutes);
-app.use("/api", vehicleRoutes);
+app.use("/api/vehicle", vehicleRoutes);
 app.use("/api", positionRoutes);
 app.use("/api", deviationRoutes);
-app.use("/api", tripRoutes);
 app.use("/api", tripReplayRoutes);
 app.use("/api/gps-allocation", gpsAllocationRoutes);
 
 // Route entries
 app.use("/api", driverRoutes); // Driver CRUD
 app.use("/api", driverVehicleRoutes); // Driver-Vehicle Assignment CRUD
-app.use("/api", authRoutes);
+
+app.use("/api/driver", driverRoutes); // Driver CRUD
+app.use("/api/trip", tripRoutes);
+app.use("/api/client-auth", ClientAuthRoutes);
 app.use("/api/", driverUserRoutes);
 
 app.use("/api/gps", gpsDeviceRoutes);
