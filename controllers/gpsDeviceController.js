@@ -16,6 +16,25 @@ const BASE_DELAY_MS = parseInt(process.env.TRANSACTION_BACKOFF_MS || "100", 10);
 exports.addDevice = async (req, res) => {
   console.log(' [DEBUG] AddDevice request body:', req.body);
 
+  const {
+    imei,
+    device_id,  
+    icc_id,
+    make,
+    model,
+    firmware_version,
+    protocol,
+    sim_provider1,
+    sim_provider2,
+    status,
+    device_type
+  } = req.body;
+
+  // Validate required fields explicitly
+  if (!imei || !device_id || !icc_id) {
+    return res.status(400).json({ error: 'imei, device_id, and icc_id are required fields' });
+  }
+
   let attempt = 0;
 
   while (attempt < MAX_RETRIES) {
@@ -27,7 +46,23 @@ exports.addDevice = async (req, res) => {
       attempt++;
 
       await session.withTransaction(async () => {
-        const device = new GPSDevice(req.body);
+        // Construct the device object with explicit fields based on new schema
+        const deviceData = {
+          imei,
+          device_id,
+          icc_id,
+          make,
+          model,
+          firmware_version,
+          protocol,
+          sim_provider1,
+          sim_provider2
+        };
+
+        if (status) deviceData.status = status;
+        if (device_type) deviceData.device_type = device_type;
+
+        const device = new GPSDevice(deviceData);
         await device.save({ session });
 
         console.log(' [DEBUG] Device saved:', device);

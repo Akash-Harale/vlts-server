@@ -10,7 +10,7 @@ const bcrypt = require('bcrypt');
 const logger = require('../utils/logger');
 const { blacklistToken, verifyRefreshToken } = require('../utils/tokenService');
 
-function generateTokens(user) {
+exports.generateTokens =  function generateTokens(user) {
   const accessToken = jwt.sign( 
     {
       id: user._id,
