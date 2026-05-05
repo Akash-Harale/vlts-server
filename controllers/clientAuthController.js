@@ -10,8 +10,8 @@ const bcrypt = require('bcrypt');
 const logger = require('../utils/logger');
 const { blacklistToken, verifyRefreshToken } = require('../utils/tokenService');
 
-exports.generateTokens =  function generateTokens(user) {
-  const accessToken = jwt.sign( 
+generateTokens = function generateTokens(user) {
+  const accessToken = jwt.sign(
     {
       id: user._id,
       role: user.role.name,
@@ -32,6 +32,8 @@ exports.generateTokens =  function generateTokens(user) {
 
   return { accessToken, refreshToken };
 }
+
+exports.generateTokens = generateTokens;
 
 exports.clientLogin = async (req, res, next) => {
   const { email, password } = req.body;
@@ -127,8 +129,8 @@ exports.getMyProfile = async (req, res) => {
 
     const employeeRecord = employee_id
       ? await Employee.findById(employee_id)
-          .lean()
-          .select('name email mobile_number designation scope tenant_id client_profile_id')
+        .lean()
+        .select('name email mobile_number designation scope tenant_id client_profile_id')
       : null;
 
     await logger.audit(
