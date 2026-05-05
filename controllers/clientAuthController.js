@@ -14,11 +14,11 @@ generateTokens = function generateTokens(user) {
   const accessToken = jwt.sign(
     {
       id: user._id,
-      role: user.role.name,
+      role: user.role?.name || "driver",
       employee_id: user.employee_id,
       tenant_id: user.tenant_id,
       client_profile_id: user.client_profile_id,
-      privileges: user.role.privileges
+      privileges: user.role?.privileges || []
     },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }

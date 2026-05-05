@@ -4,6 +4,7 @@ const User = require('../models/user');
 const Employee = require('../models/employeeModel');
 const Role = require('../models/roleModel');
 const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
+const VehicleDeviceMap = require("../models/vehicleDeviceMap");
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 const bcrypt = require('bcrypt');
@@ -337,76 +338,76 @@ exports.deleteDriver = async (req, res) => {
 
 // for driver interface- mobile app
 exports.loginDriver = async (req, res) => {
-  const meta = getMeta(req);
+  try {
+    const { email, password } = req.body;
 
-  console.log('req.body: ', req.body);
-  let attempt = 0;
-
-  while (attempt < MAX_RETRIES) {
-    const session = await mongoose.startSession();
-    try {
-      attempt++;
-
-      await session.withTransaction(async () => {
-        const { driver_id, password } = req.body;
-
-        if (!driver_id || !password) {
-          const err = new Error("Driver ID and password are required");
-          err.statusCode = 400;
-          throw err;
-        }
-
-        // Find Driver
-        const driver = await User.findOne({ email: driver_id, role: "69f88fe73e138c94685cd2e5" }).session(session);
-        if (!driver) {
-          const err = new Error("Driver not found");
-          err.statusCode = 404;
-          throw err;
-        }
-
-        // Check password
-        const isPasswordValid = await bcrypt.compare(password, driver.password);
-        if (!isPasswordValid) {
-          const err = new Error("Invalid password");
-          err.statusCode = 401;
-          throw err;
-        }
-
-        // get employee record
-        const employee = await Employee.findById(driver.employee_id);
-        if (!employee) {
-          const err = new Error("Employee not found");
-          err.statusCode = 404;
-          throw err;
-        }
-
-        const { accessToken, refreshToken } = generateTokens(driver);
-
-
-        return res.status(200).json({
-          message: "Driver logged in successfully",
-          accessToken,
-          refreshToken,
-          driver
-        });
-      });
-
-      session.endSession();
-
-    } catch (err) {
-      console.error("loginDriver error:", err);
-      session.endSession();
-
-      if (err.statusCode === 400 || err.statusCode === 401 || err.statusCode === 404) {
-        return res.status(err.statusCode).json({ error: err.message });
-      }
-
-      if (err.errorLabels?.includes("TransientTransactionError") && attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, BASE_DELAY_MS * attempt));
-        continue;
-      }
-
-      return res.status(500).json({ error: err.message });
+    if (!email || !password) {
+      return res.status(400).json({ error: "email and password are required" });
     }
+
+    //  check driver in user table
+    const driver = await User.findOne({ 
+      email: email
+    })
+    .populate("role")
+    .populate("employee_id")
+      ;
+
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, driver.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    const employee = await Employee.findById(driver.employee_id);
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // check driver collection
+    const driverRecord = await Driver.findOne({ email_id: email });
+    let gpsDeviceData = null;
+    let registration_number = null;
+
+    if (driverRecord) {
+      // check vehicle assigned
+      const vehicleAssignment = await DriverVehicleAssignment.findOne({
+        driver_id: driverRecord._id,
+        status: "ACTIVE"
+      }).populate("vehicle_id");
+
+      if (vehicleAssignment && vehicleAssignment.vehicle_id) {
+        const vehicle = vehicleAssignment.vehicle_id;
+        registration_number = vehicle.registration_number;
+
+        // check gps device assigned to the vehicle
+        const deviceMap = await VehicleDeviceMap.findOne({
+          vehicle_id: vehicle._id,
+          status: "MAPPED"
+        }).populate("gps_device_id");
+
+        if (deviceMap && deviceMap.gps_device_id) {
+          gpsDeviceData = deviceMap.gps_device_id;
+        }
+      }
+    }
+
+
+    const { accessToken, refreshToken } = generateTokens(driver);
+
+    return res.status(200).json({
+      message: "Driver logged in successfully",
+      accessToken,
+      refreshToken,
+      gpsDevice: gpsDeviceData,
+      registration_number: registration_number
+    });
+
+  } catch (err) {
+    console.error("loginDriver error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
