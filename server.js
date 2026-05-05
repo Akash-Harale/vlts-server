@@ -110,7 +110,6 @@ app.use("/api/client-auth", ClientAuthRoutes);
 app.use("/api/", driverUserRoutes);
 
 app.use("/api/gps", gpsDeviceRoutes);
-//app.use("/vehicle-device-map", vehicleDeviceMapRoutes);
 // get all assigned gps to vehicle
 app.use("/api", vehicleDeviceMapRoutes);
 // CRUD- Client
@@ -124,7 +123,6 @@ app.use('/api/auth/superadmin', superAdminRoutes);       // Super Admin APIs
 app.use('/api/platform/tenants', platformTenantRoutes);  // Tenant lifecycle mgmt (Super Admin only)
 app.use('/api/auth/tenantadmin', tenantAdminRoutes);     // Tenant Admin APIs
 app.use('/api/auth/tenantuser', tenantUserAuthRoutes);   // Tenant User APIs
-
 app.use("/api", archiveRoutes);
 
 // 17/02/2026

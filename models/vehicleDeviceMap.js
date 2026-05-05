@@ -13,6 +13,7 @@ const vehicleDeviceMapSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "GPSDevice",
     required: true,
+    unique: true
   },
   technician_id: {
     type: String,

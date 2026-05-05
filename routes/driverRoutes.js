@@ -63,5 +63,10 @@ DELETE /api/drivers/67a0f1c2e4b1a9d123456789
 */
 router.delete('/:id', authMiddleware(["delete_driver"]), driverController.deleteDriver); // Delete
 
+
+
+// for driver interface- mobile app
+router.post('/login', driverController.loginDriver);
+
 module.exports = router;
 

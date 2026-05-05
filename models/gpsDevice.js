@@ -9,19 +9,22 @@ This way, operators don’t have to manually update the device status every time
 const mongoose = require('mongoose');
 
 const gpsDeviceSchema = new mongoose.Schema({
-  imei: { type: String, required: true, unique: true },   // Unique IMEI
-  serial_number: { type: String, required: true, unique: true },
-  manufacturer: { type: String },
+  imei: { type: String, required: true, unique: true },
+  device_id: { type: String, required: true, unique: true },
+  icc_id: { type: String, required: true, unique: true },
+  make: { type: String },
   model: { type: String },
+  firmware_version: { type: String },
+  protocol: { type: String },
+  sim_provider1: { type: String },
+  sim_provider2: { type: String },
   status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'FAULTY'], default: 'ACTIVE' },
-  installed_on: { type: Date },
+  device_type: { type: String, enum: ['GPS', 'MOBILE'], default: 'GPS' },
   created_at: { type: Date, default: Date.now },
-  failed_attempts: { type: Number, default: 0 } // Track failed mapping attempts
 });
 
 // Indexes for faster queries
 gpsDeviceSchema.index({ imei: 1 });
-gpsDeviceSchema.index({ serial_number: 1 });
 
 // Validation method: only ACTIVE devices can be mapped
 gpsDeviceSchema.methods.canBeMapped = function () {

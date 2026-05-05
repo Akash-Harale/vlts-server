@@ -4,8 +4,12 @@ const User = require('../models/user');
 const Employee = require('../models/employeeModel');
 const Role = require('../models/roleModel');
 const DriverVehicleAssignment = require("../models/driverVehicleAssignment");
+const VehicleDeviceMap = require("../models/vehicleDeviceMap");
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { generateTokens } = require('./clientAuthController');
 
 
 const getMeta = (req) => ({
@@ -16,8 +20,8 @@ const getMeta = (req) => ({
   trace_id: req.headers['x-request-id'] || req.trace_id || null
 });
 
-  const MAX_RETRIES = parseInt(process.env.TRANSACTION_MAX_RETRIES || "3", 10);
-  const BASE_DELAY_MS = parseInt(process.env.TRANSACTION_BACKOFF_MS || "100", 10);
+const MAX_RETRIES = parseInt(process.env.TRANSACTION_MAX_RETRIES || "3", 10);
+const BASE_DELAY_MS = parseInt(process.env.TRANSACTION_BACKOFF_MS || "100", 10);
 
 // CREATE Driver + Employee + User
 exports.createDriver = async (req, res) => {
@@ -33,7 +37,7 @@ exports.createDriver = async (req, res) => {
 
       await session.withTransaction(async () => {
         const { driver_name, driver_license,
-           mobile_number, email_id, user_id, password } = req.body;
+          mobile_number, email_id, user_id, password } = req.body;
 
         if (!email_id || !password) {
           const err = new Error("email and password are required");
@@ -54,11 +58,11 @@ exports.createDriver = async (req, res) => {
         await employee.save({ session });
 
         // Create Driver
-        const driver = new Driver({ 
-          driver_name, 
-          driver_license, 
-          mobile_number, 
-          email_id, 
+        const driver = new Driver({
+          driver_name,
+          driver_license,
+          mobile_number,
+          email_id,
           user_id: email_id // Use email as user_id for backward compatibility
         });
         await driver.save({ session });
@@ -73,10 +77,10 @@ exports.createDriver = async (req, res) => {
         // }
 
         // Create User
-        const user = new User({ 
+        const user = new User({
           employee_id: employee._id,
-          email: email_id, 
-          password, 
+          email: email_id,
+          password,
           //role: driverRole._id,
           scope: "client",
           tenant_id: meta.tenant_id,
@@ -112,7 +116,7 @@ exports.createDriver = async (req, res) => {
 
     } catch (err) {
       session.endSession();
-console.error("createDriver error:", err);
+      console.error("createDriver error:", err);
       if (err.statusCode === 400 || err.statusCode === 500) {
         await logger.audit(meta.emp_id, meta.emp_name, meta.role, "create", "driver", err.message, "failed", meta.tenant_id, meta.trace_id);
         return res.status(err.statusCode).json({ error: err.message });
@@ -232,7 +236,7 @@ exports.getDriverById = async (req, res) => {
 // UPDATE Driver
 exports.updateDriver = async (req, res) => {
   const meta = getMeta(req);
-console.log('updateDriver: req.params.id: ', req.params.id);
+  console.log('updateDriver: req.params.id: ', req.params.id);
   try {
     const driver = await Driver.findByIdAndUpdate(
       req.params.id,
@@ -282,11 +286,11 @@ exports.deleteDriver = async (req, res) => {
         if (user) {
           // Delete User
           await User.findByIdAndDelete(user._id).session(session);
-          
+
           // Delete Employee
           await Employee.findByIdAndDelete(user.employee_id).session(session);
         }
-        
+
         // Delete Driver
         await Driver.findByIdAndDelete(req.params.id).session(session);
 
@@ -332,3 +336,78 @@ exports.deleteDriver = async (req, res) => {
 };
 
 
+// for driver interface- mobile app
+exports.loginDriver = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "email and password are required" });
+    }
+
+    //  check driver in user table
+    const driver = await User.findOne({ 
+      email: email
+    })
+    .populate("role")
+    .populate("employee_id")
+      ;
+
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, driver.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    const employee = await Employee.findById(driver.employee_id);
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // check driver collection
+    const driverRecord = await Driver.findOne({ email_id: email });
+    let gpsDeviceData = null;
+    let registration_number = null;
+
+    if (driverRecord) {
+      // check vehicle assigned
+      const vehicleAssignment = await DriverVehicleAssignment.findOne({
+        driver_id: driverRecord._id,
+        status: "ACTIVE"
+      }).populate("vehicle_id");
+
+      if (vehicleAssignment && vehicleAssignment.vehicle_id) {
+        const vehicle = vehicleAssignment.vehicle_id;
+        registration_number = vehicle.registration_number;
+
+        // check gps device assigned to the vehicle
+        const deviceMap = await VehicleDeviceMap.findOne({
+          vehicle_id: vehicle._id,
+          status: "MAPPED"
+        }).populate("gps_device_id");
+
+        if (deviceMap && deviceMap.gps_device_id) {
+          gpsDeviceData = deviceMap.gps_device_id;
+        }
+      }
+    }
+
+
+    const { accessToken, refreshToken } = generateTokens(driver);
+
+    return res.status(200).json({
+      message: "Driver logged in successfully",
+      accessToken,
+      refreshToken,
+      gpsDevice: gpsDeviceData,
+      registration_number: registration_number
+    });
+
+  } catch (err) {
+    console.error("loginDriver error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
