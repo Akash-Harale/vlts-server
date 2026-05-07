@@ -56,6 +56,7 @@ const telemetryStatsRoutes = require("./routes/telemetryStatsRoutes");
 const telemetryDashboardRoutes = require("./routes/telemetryDashboardRoutes");
 
 const driverRoutes = require("./routes/driverRoutes");
+const helpDeskRoutes = require("./routes/helpDeskRoutes");
 
 // Import health check job
 require("./jobs/deviceHealthCheck");
@@ -124,6 +125,7 @@ app.use('/api/platform/tenants', platformTenantRoutes);  // Tenant lifecycle mgm
 app.use('/api/auth/tenantadmin', tenantAdminRoutes);     // Tenant Admin APIs
 app.use('/api/auth/tenantuser', tenantUserAuthRoutes);   // Tenant User APIs
 app.use("/api", archiveRoutes);
+app.use("/api/helpdesk", helpDeskRoutes);
 
 // 17/02/2026
 app.use("/api/checkavailability", checkAvailabilityRoutes);
