@@ -11,6 +11,11 @@ const mongoose = require("mongoose");
 
 const driverVehicleAssignmentSchema = new mongoose.Schema(
   {
+    client_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Client",
+      required: true,
+    },
     driver_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Driver",
