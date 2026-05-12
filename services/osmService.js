@@ -26,8 +26,16 @@ queries OpenStreetMap (via the Nominatim API (nominatim.org in Bing)), and
 returns their latitude/longitude coordinates.
 
 */
-// Function to query Nominatim
+// Function to query Nominatim — or pass-through if already "lng,lat" coords
 async function fetchCoords(address) {
+  // If the value looks like "lng,lat" (e.g. "78.1234,20.5678") use it directly.
+  // This is the format sent when the user pins a location on the ArcGIS map.
+  const coordPattern = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
+  if (coordPattern.test(address.trim())) {
+    const [lon, lat] = address.trim().split(",");
+    return { address, lat: parseFloat(lat), lon: parseFloat(lon) };
+  }
+
   const url = `https://nominatim.openstreetmap.org/search`;
   const response = await axios.get(url, {
     params: {
@@ -44,8 +52,8 @@ async function fetchCoords(address) {
 
   return {
     address,
-    lat: response.data[0].lat,
-    lon: response.data[0].lon,
+    lat: parseFloat(response.data[0].lat),
+    lon: parseFloat(response.data[0].lon),
   };
 }
 
@@ -104,13 +112,37 @@ async function fetchDistanceMatrix(coordsArray) {
   };
 }
 
+
+/**
+ * Fetch an OSRM URL with automatic retry on 429 (rate-limit).
+ * Retries up to maxRetries times with exponential backoff (1 s, 2 s, 4 s …).
+ */
+async function fetchOSRM(url, maxRetries = 3, baseDelayMs = 1000) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url);
+
+    if (res.status === 429) {
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt); // 1 s, 2 s, 4 s
+        console.warn(`OSRM rate-limited (429). Retrying in ${delay}ms… (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw new Error("OSRM rate limit exceeded. Please wait a moment and try again.");
+    }
+
+    if (!res.ok) {
+      throw new Error(`OSRM request failed with status ${res.status}`);
+    }
+
+    return res.json();
+  }
+}
+
 async function getMultipleRoutes(startLng, startLat, endLng, endLat) {
   const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?alternatives=true&overview=full&geometries=geojson`;
-
-  const res = await fetch(url);
-  const data = await res.json();
-
-  return data.routes || [];
+  const data = await fetchOSRM(url);
+  return { routes: data.routes || [], waypoints: data.waypoints || [] };
 }
 
 /**
@@ -131,14 +163,13 @@ async function getRouteWithWaypoints(coordsArray) {
 
   const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?alternatives=true&overview=full&geometries=geojson`;
 
-  const res = await fetch(url);
-  const data = await res.json();
+  const data = await fetchOSRM(url);
 
   if (data.code !== "Ok" || !data.routes || data.routes.length === 0) {
     throw new Error("OSRM could not find a route through the specified waypoints");
   }
 
-  return data.routes;
+  return { routes: data.routes, waypoints: data.waypoints || [] };
 }
 
 module.exports = {
