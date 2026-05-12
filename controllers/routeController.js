@@ -371,14 +371,14 @@ exports.getMultipleRoutesFromAddresses = async (req, res) => {
     const destCoords = await fetchCoords(destination);
 
     // Step 2: Get multiple routes from OSRM
-    const routes = await getMultipleRoutes(
+    const { routes, waypoints } = await getMultipleRoutes(
       sourceCoords.lon,
       sourceCoords.lat,
       destCoords.lon,
       destCoords.lat
     );
 
-    res.json(routes);
+    res.json({ routes, waypoints });
   } catch (err) {
     console.error("Error fetching multiple routes:", err.message);
     res.status(500).json({ error: err.message });
@@ -407,7 +407,7 @@ exports.getMultipleRoutesWithWaypoints = async (req, res) => {
 
     // Parse stops — may be a comma-delimited string or absent
     const stopNames = stops
-      ? stops.split(",").map((s) => s.trim()).filter(Boolean)
+      ? stops.split("|").map((s) => s.trim()).filter(Boolean)
       : [];
 
     // Geocode source, all stops, and destination in parallel
@@ -415,15 +415,15 @@ exports.getMultipleRoutesWithWaypoints = async (req, res) => {
     const allCoords = await Promise.all(allPlaceNames.map(fetchCoords));
 
     // Fetch route through all waypoints
-    const routes = await getRouteWithWaypoints(allCoords);
+    const { routes, waypoints } = await getRouteWithWaypoints(allCoords);
 
-    // Attach human-readable labels to each route so the frontend can use them
-    const labelledRoutes = routes.map((route, idx) => ({
+    // Attach human-readable labels to each route
+    const labelledRoutes = routes.map((route) => ({
       ...route,
       waypoint_labels: allPlaceNames,
     }));
 
-    res.json(labelledRoutes);
+    res.json({ routes: labelledRoutes, waypoints });
   } catch (err) {
     console.error("Error fetching routes with waypoints:", err.message);
     res.status(500).json({ error: err.message });
