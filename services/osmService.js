@@ -113,8 +113,37 @@ async function getMultipleRoutes(startLng, startLat, endLng, endLat) {
   return data.routes || [];
 }
 
+/**
+ * Fetch route(s) through multiple ordered waypoints via OSRM.
+ * @param {Array<{lat: string|number, lon: string|number}>} coordsArray
+ *   Ordered array starting with source, then stops, ending with destination.
+ * @returns {Promise<Array>} OSRM route alternatives array
+ */
+async function getRouteWithWaypoints(coordsArray) {
+  if (!coordsArray || coordsArray.length < 2) {
+    throw new Error("At least source and destination coordinates are required");
+  }
+
+  // Build semicolon-delimited coord string: lng,lat;lng,lat;...
+  const coordString = coordsArray
+    .map((c) => `${c.lon},${c.lat}`)
+    .join(";");
+
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?alternatives=true&overview=full&geometries=geojson`;
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data.code !== "Ok" || !data.routes || data.routes.length === 0) {
+    throw new Error("OSRM could not find a route through the specified waypoints");
+  }
+
+  return data.routes;
+}
+
 module.exports = {
   getMultipleRoutes,
+  getRouteWithWaypoints,
   fetchCoords,
   fetchRouteDetails,
   generateGeofence,
