@@ -11,6 +11,7 @@ const {
   fetchRouteDetails,
   haversine,
   getMultipleRoutes,
+  getRouteWithWaypoints,
 } = require("../services/osmService");
 
 // Create route + geofence
@@ -354,6 +355,7 @@ exports.getRouteWithActualDistance = async (req, res) => {
 REST API to fetch multiple routes between source and destination addresses.
 GET /api/routes/multi-routes?source=Delhi&destination=Agra
 */
+// Multiple Routes with OSRM (direct — no intermediate stops)
 exports.getMultipleRoutesFromAddresses = async (req, res) => {
   try {
     const { source, destination } = req.query;
@@ -379,6 +381,51 @@ exports.getMultipleRoutesFromAddresses = async (req, res) => {
     res.json(routes);
   } catch (err) {
     console.error("Error fetching multiple routes:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/*
+  GET /api/routes/multi-routes-with-stops
+  ?source=Nagpur&destination=Pune&stops=Wardha,Yavatmal
+
+  Geocodes source, each comma-separated stop, and destination in parallel,
+  then fetches OSRM route(s) chained through all waypoints in order.
+
+  Returns the same OSRM route array shape as multi-routes but the geometry
+  passes through every intermediate stop.
+*/
+exports.getMultipleRoutesWithWaypoints = async (req, res) => {
+  try {
+    const { source, destination, stops } = req.query;
+
+    if (!source || !destination) {
+      return res
+        .status(400)
+        .json({ error: "Source and destination addresses are required" });
+    }
+
+    // Parse stops — may be a comma-delimited string or absent
+    const stopNames = stops
+      ? stops.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    // Geocode source, all stops, and destination in parallel
+    const allPlaceNames = [source, ...stopNames, destination];
+    const allCoords = await Promise.all(allPlaceNames.map(fetchCoords));
+
+    // Fetch route through all waypoints
+    const routes = await getRouteWithWaypoints(allCoords);
+
+    // Attach human-readable labels to each route so the frontend can use them
+    const labelledRoutes = routes.map((route, idx) => ({
+      ...route,
+      waypoint_labels: allPlaceNames,
+    }));
+
+    res.json(labelledRoutes);
+  } catch (err) {
+    console.error("Error fetching routes with waypoints:", err.message);
     res.status(500).json({ error: err.message });
   }
 };

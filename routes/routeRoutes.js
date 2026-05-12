@@ -111,7 +111,11 @@ router.get(
   routeController.getRouteWithActualDistance,
 );
 
-// Multiple Routes with OSRM
+// Multiple Routes with OSRM (direct — no intermediate stops)
 router.get("/routes/multi-routes", routeController.getMultipleRoutesFromAddresses);
+
+// Multiple Routes with OSRM passing through intermediate stops
+// GET /api/routes/multi-routes-with-stops?source=Nagpur&destination=Pune&stops=Wardha,Yavatmal
+router.get("/routes/multi-routes-with-stops", routeController.getMultipleRoutesWithWaypoints);
 
 module.exports = router;
