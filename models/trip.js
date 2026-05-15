@@ -2,6 +2,11 @@
 const mongoose = require("mongoose");
 
 const tripSchema = new mongoose.Schema({
+  client_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ClientProfile",
+    required: true,
+  },
   vehicle_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vehicle",
