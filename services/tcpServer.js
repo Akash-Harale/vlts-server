@@ -2,6 +2,7 @@ require("dotenv").config();
 const net = require("net");
 const connectDB = require("../config/db");   // import existing db connection
 const GPSRawData = require("../models/gpsRawData");
+const { parseGpsPacket } = require("../utils/gpsParser");
 
 // Initialize MongoDB connection once when service starts
 connectDB();
@@ -25,15 +26,18 @@ const tcpServer = net.createServer(socket => {
 
   // Handle incoming data
   socket.on("data", async data => {
+	  const rawStr = data.toString("ascii").trim();
     try {
-      // Convert buffer to string and parse JSON
-      const raw = JSON.parse(data.toString()); // replace with real parser for GPS protocol
+      console.log('raw str: ', rawStr);
+
+      // Parse raw string  to JSON	
+      const parsed = parseGpsPacket(rawStr);
 
       // Save raw packet to MongoDB
       const gpsRaw = new GPSRawData({
-        imei: raw.imei,
-        raw_payload: raw,
-        raw_data: Buffer.from(data)
+        imei: parsed.imei,
+        raw_payload: parsed.payload,
+        raw_data: data
       });
 
       await gpsRaw.save();
