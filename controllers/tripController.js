@@ -34,15 +34,32 @@ exports.createTrip = async (req, res) => {
     const place_from = route?.source;
     const place_to = route?.destination;
 
-    if (!place_from || !place_to || !route?.geometry || !vehicleId || !departureTime || !arrivalTime) {
-      return res.status(400).json({ success: false, message: "Missing required fields including geometry" });
+    if (
+      !place_from ||
+      !place_to ||
+      !route?.geometry ||
+      !vehicleId ||
+      !departureTime ||
+      !arrivalTime
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Missing required fields including geometry",
+        });
     }
 
     const dep = new Date(departureTime);
     const arr = new Date(arrivalTime);
 
     if (arr <= dep) {
-      return res.status(400).json({ success: false, message: "Arrival time must be after departure time" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Arrival time must be after departure time",
+        });
     }
 
     // Insert Route document
@@ -51,7 +68,8 @@ exports.createTrip = async (req, res) => {
       place_from,
       place_to,
       source: route.geometry.coordinates[0],
-      destination: route.geometry.coordinates[route.geometry.coordinates.length - 1],
+      destination:
+        route.geometry.coordinates[route.geometry.coordinates.length - 1],
       geometry: route.geometry,
     });
     await routeDoc.save({ session });
@@ -92,20 +110,25 @@ exports.createTrip = async (req, res) => {
         next_available_date: arr,
         status: "ACTIVE",
       },
-      { upsert: true, new: true, session }
+      { upsert: true, new: true, session },
     );
 
     // Update route_id into driverVehicleAssignment
     const driverVehicleDoc = await DriverVehicle.findOneAndUpdate(
       { vehicle_id: vehicleId },
       { route_id: routeDoc._id },
-      { new: true, session }
+      { new: true, session },
     );
 
     if (!driverVehicleDoc) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: "No driver-vehicle assignment found for this vehicle" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "No driver-vehicle assignment found for this vehicle",
+        });
     }
 
     const vehicleDoc = await Vehicle.findById(vehicleId).session(session);
@@ -114,15 +137,15 @@ exports.createTrip = async (req, res) => {
     session.endSession();
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'create',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "create",
+      "trip",
       `Trip created for vehicle ${vehicleId} on route ${routeDoc._id}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.status(201).json({
@@ -156,11 +179,11 @@ exports.createTrip = async (req, res) => {
         },
         vehicle: vehicleDoc
           ? {
-              id: vehicleDoc._id,
-              registration_number: vehicleDoc.registration_number,
-              make: vehicleDoc.make,
-              model: vehicleDoc.model,
-            }
+            id: vehicleDoc._id,
+            registration_number: vehicleDoc.registration_number,
+            make: vehicleDoc.make,
+            model: vehicleDoc.model,
+          }
           : null,
         vs,
       },
@@ -171,20 +194,19 @@ exports.createTrip = async (req, res) => {
     console.error("createTrip error:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
 
 // =======================================
 // FETCH ALL TRIPS (read only → no transaction)
@@ -199,7 +221,7 @@ exports.fetchTrips = async (req, res) => {
       status: "ACTIVE",
       trip_dep_status: "DEPARTED",
       trip_arrival_status: "AWAITED",
-      client_id: req.user?.client_profile_id
+      client_id: req.user?.client_profile_id,
     };
 
     const total = await Trip.countDocuments(query);
@@ -212,7 +234,7 @@ exports.fetchTrips = async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
-    const data = assignments.map(a => ({
+    const data = assignments.map((a) => ({
       trip_id: a._id,
       vehicle_id: a.vehicle_id,
       registration_number: a.registration_number,
@@ -236,19 +258,19 @@ exports.fetchTrips = async (req, res) => {
       total_distance: a.total_distance || 0,
       position_name: a.position_name || null,
       overspeed_count: a.overspeed_count || 0,
-      __v: a.__v
+      __v: a.__v,
     }));
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'read',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "read",
+      "trip",
       `All active departed trips fetched, page: ${page}, count: ${data.length}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.json({
@@ -256,33 +278,36 @@ exports.fetchTrips = async (req, res) => {
       limit: parseInt(limit),
       total,
       totalPages: Math.ceil(total / limit),
-      data
+      data,
     });
-
   } catch (err) {
     console.error("Error fetching routes with mapped vehicles:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ error: err.message });
   }
 };
 
-
 // =======================================
 // FETCH TRIPS BY VEHICLE (read only → no transaction)
 // =======================================
 exports.fetchTripsByVehicle = async (req, res) => {
-  console.log("tripController: fetchTripsByVehicle API: req.params: ", req.params.vehicleId, " : req.query: ", req.query);
+  console.log(
+    "tripController: fetchTripsByVehicle API: req.params: ",
+    req.params.vehicleId,
+    " : req.query: ",
+    req.query,
+  );
 
   try {
     const vehicle_id = req.params.vehicleId;
@@ -293,17 +318,19 @@ exports.fetchTripsByVehicle = async (req, res) => {
       status,
       trip_approval_status,
       trip_dep_status,
-      trip_arrival_status
+      trip_arrival_status,
     } = req.query;
 
-    const query = {};
+    const query = {
+      client_id: req.user?.client_profile_id,
+    };
     if (status) query.status = status;
     if (trip_approval_status) query.trip_approval_status = trip_approval_status;
     if (trip_dep_status) query.trip_dep_status = trip_dep_status;
     if (trip_arrival_status) query.trip_arrival_status = trip_arrival_status;
     if (vehicle_id) query.vehicle_id = vehicle_id;
 
-    console.log('fetchTripsByVehicle: query filter: ', query);
+    console.log("fetchTripsByVehicle: query filter: ", query);
 
     const total = await Trip.countDocuments(query);
 
@@ -316,7 +343,7 @@ exports.fetchTripsByVehicle = async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
-    const data = assignments.map(a => ({
+    const data = assignments.map((a) => ({
       trip_id: a._id,
       vehicle_id: a.vehicle_id?._id ?? null,
       registration_number: a.vehicle_id?.registration_number ?? null,
@@ -340,19 +367,19 @@ exports.fetchTripsByVehicle = async (req, res) => {
       total_distance: a.total_distance || 0,
       position_name: a.position_name || null,
       overspeed_count: a.overspeed_count || 0,
-      __v: a.__v
+      __v: a.__v,
     }));
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'read',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "read",
+      "trip",
       `Trips fetched for vehicle ${vehicle_id}, count: ${data.length}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.json({
@@ -360,27 +387,25 @@ exports.fetchTripsByVehicle = async (req, res) => {
       limit: parseInt(limit),
       total,
       totalPages: Math.ceil(total / limit),
-      data
+      data,
     });
-
   } catch (err) {
     console.error("Error fetching trips by vehicle:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // =======================================
 // FETCH ROUTE GEOMETRY (read only → no transaction)
@@ -393,15 +418,15 @@ exports.fetchRouteGeometry = async (req, res) => {
     const trip = await Trip.findById(tripId)
       .populate({
         path: "route_id",
-        select: "geometry name place_from place_to source destination"
+        select: "geometry name place_from place_to source destination",
       })
       .populate({
         path: "vehicle_id",
-        select: "registration_number make model"
+        select: "registration_number make model",
       })
       .populate({
         path: "driver_id",
-        select: "driver_name mobile_number"
+        select: "driver_name mobile_number",
       })
       .lean();
 
@@ -409,30 +434,44 @@ exports.fetchRouteGeometry = async (req, res) => {
       console.error("[tripController] Trip not found for ID:", tripId);
       return res.status(404).json({
         success: false,
-        message: "Trip not found"
+        message: "Trip not found",
+      });
+    }
+
+    // Verify trip belongs to requesting client
+    if (trip.client_id.toString() !== req.user?.client_profile_id) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Trip does not belong to your client",
       });
     }
 
     if (!trip.route_id || !trip.route_id.geometry) {
-      console.error("[tripController] Geometry not available for route:", trip.route_id?._id);
+      console.error(
+        "[tripController] Geometry not available for route:",
+        trip.route_id?._id,
+      );
       return res.status(404).json({
         success: false,
-        message: "Geometry not available for this route"
+        message: "Geometry not available for this route",
       });
     }
 
-    console.log("[tripController] Geometry successfully retrieved for route:", trip.route_id._id);
+    console.log(
+      "[tripController] Geometry successfully retrieved for route:",
+      trip.route_id._id,
+    );
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'read',
-      'routeGeometry',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "read",
+      "routeGeometry",
       `Route geometry fetched for trip ${tripId}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     return res.status(200).json({
@@ -446,21 +485,21 @@ exports.fetchRouteGeometry = async (req, res) => {
           to: trip.route_id.place_to,
           source: trip.route_id.source,
           destination: trip.route_id.destination,
-          geometry: trip.route_id.geometry
+          geometry: trip.route_id.geometry,
         },
         vehicle: trip.vehicle_id
           ? {
             id: trip.vehicle_id._id,
             registrationNumber: trip.vehicle_id.registration_number,
             make: trip.vehicle_id.make,
-            model: trip.vehicle_id.model
+            model: trip.vehicle_id.model,
           }
           : null,
         driver: trip.driver_id
           ? {
             id: trip.driver_id._id,
             name: trip.driver_id.driver_name,
-            mobileNumber: trip.driver_id.mobile_number
+            mobileNumber: trip.driver_id.mobile_number,
           }
           : null,
         stats: {
@@ -469,42 +508,46 @@ exports.fetchRouteGeometry = async (req, res) => {
           total_distance: trip.total_distance || 0,
           position_name: trip.position_name || null,
           overspeed_count: trip.overspeed_count || 0,
-          geofence_crossing_count: trip.geofence_crossing_count || 0
-        }
-      }
+          geofence_crossing_count: trip.geofence_crossing_count || 0,
+        },
+      },
     });
   } catch (err) {
-    console.error("[tripController] Error while fetching geometry:", err.message);
+    console.error(
+      "[tripController] Error while fetching geometry:",
+      err.message,
+    );
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'routeGeometry',
+      "routeGeometry",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
-
 
 // =======================================
 // FETCH TRIPS BY STATUS (read only → no transaction)
 // =======================================
 exports.fetchTripsByStatus = async (req, res) => {
-  console.log('tripController: fetchTripsByStatus: req.query: ', req.query);
+  console.log("tripController: fetchTripsByStatus: req.query: ", req.query);
 
   try {
     const { trip_approval_status, trip_dep_status } = req.query;
 
-    const filter = {};
+    const filter = {
+      client_id: req.user?.client_profile_id,
+    };
     if (trip_approval_status && trip_dep_status) {
       filter.trip_approval_status = trip_approval_status;
       filter.trip_dep_status = trip_dep_status;
@@ -515,7 +558,8 @@ exports.fetchTripsByStatus = async (req, res) => {
     } else {
       return res.status(404).json({
         success: false,
-        message: "Provide trip_approval_status or trip_dep_status (or both) to filter assignments"
+        message:
+          "Provide trip_approval_status or trip_dep_status (or both) to filter assignments",
       });
     }
 
@@ -524,16 +568,22 @@ exports.fetchTripsByStatus = async (req, res) => {
       .populate("driver_id", "driver_name driver_license mobile_number")
       .populate("vehicle_id", "registration_number make model");
 
-    console.log('tripController: fetchTripsByStatus trips: ', assignments);
+    console.log("tripController: fetchTripsByStatus trips: ", assignments);
 
     if (!assignments || assignments.length === 0) {
-      return res.status(404).json({ success: false, message: "No assignments found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No assignments found" });
     }
 
-    const vehicleIds = assignments.map(a => a.vehicle_id?._id || a.vehicle_id);
-    const vehicleStates = await VehicleState.find({ vehicle_id: { $in: vehicleIds } });
+    const vehicleIds = assignments.map(
+      (a) => a.vehicle_id?._id || a.vehicle_id,
+    );
+    const vehicleStates = await VehicleState.find({
+      vehicle_id: { $in: vehicleIds },
+    });
 
-    const json_response_data = assignments.map(a => ({
+    const json_response_data = assignments.map((a) => ({
       route: a.route_id
         ? {
           _id: a.route_id._id,
@@ -542,7 +592,7 @@ exports.fetchTripsByStatus = async (req, res) => {
           place_to: a.route_id.place_to,
           source: a.route_id.source,
           destination: a.route_id.destination,
-          geometry: a.route_id.geometry
+          geometry: a.route_id.geometry,
         }
         : null,
       assignment: {
@@ -565,20 +615,20 @@ exports.fetchTripsByStatus = async (req, res) => {
         trip_dep_status: a.trip_dep_status,
         trip_arrival_status: a.trip_arrival_status,
         trip_actual_arrival_time: a.trip_actual_arrival_time,
-        trip_arrival_notes: a.trip_arrival_notes
+        trip_arrival_notes: a.trip_arrival_notes,
       },
       vehicle: a.vehicle_id
         ? {
           id: a.vehicle_id._id,
           registration_number: a.vehicle_id.registration_number,
           make: a.vehicle_id.make,
-          model: a.vehicle_id.model
+          model: a.vehicle_id.model,
         }
         : null,
       vehicleState: vehicleStates.find(
-        vs =>
+        (vs) =>
           vs.vehicle_id.toString() ===
-          (a.vehicle_id?._id?.toString() || a.vehicle_id.toString())
+          (a.vehicle_id?._id?.toString() || a.vehicle_id.toString()),
       ),
       driver: a.driver_id
         ? {
@@ -591,63 +641,77 @@ exports.fetchTripsByStatus = async (req, res) => {
     }));
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'read',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "read",
+      "trip",
       `Trips fetched by status filter: ${JSON.stringify(filter)}, count: ${json_response_data.length}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.status(200).json({
       success: true,
       message: "Assigned route(s) fetched successfully",
-      data: json_response_data
+      data: json_response_data,
     });
   } catch (err) {
     console.error("fetchAssignedRoute error:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-
 // =======================================
 // UPDATE TRIP STATUS
 // TRANSACTION NEEDED: Trip + VehicleState both written on cancellation
 // =======================================
 exports.updateTripStatus = async (req, res) => {
-  console.log("tripController: updateTripStatus API called: req.params: ", req.params.tripId, " : req.body:", req.body);
+  console.log(
+    "tripController: updateTripStatus API called: req.params: ",
+    req.params.tripId,
+    " : req.body:",
+    req.body,
+  );
 
   const assignment_id = req.params.tripId;
-  console.log('tripController: updateTripStatus API: assignment_id: ', assignment_id);
+  console.log(
+    "tripController: updateTripStatus API: assignment_id: ",
+    assignment_id,
+  );
 
   const {
     trip_approval_status,
     trip_dep_status,
     trip_arrival_status,
     trip_actual_arrival_time,
-    trip_arrival_notes
+    trip_arrival_notes,
   } = req.body;
 
   if (!assignment_id) {
     return res.status(400).json({
       success: false,
-      message: "Provide assignment_id in req.params to update!"
+      message: "Provide assignment_id in req.params to update!",
+    });
+  }
+
+  if (!req.user?.client_profile_id) {
+    return res.status(400).json({
+      success: false,
+      message: "Client ID not found in request",
     });
   }
 
@@ -655,20 +719,25 @@ exports.updateTripStatus = async (req, res) => {
     return res.status(400).json({
       success: false,
       message:
-        "Provide either trip_approval_status (APPROVED/CANCELLED) or trip_dep_status (DEPARTED/CANCELLED) or trip_arrival_status (INTIME/ONTIME/DELAYED)"
+        "Provide either trip_approval_status (APPROVED/CANCELLED) or trip_dep_status (DEPARTED/CANCELLED) or trip_arrival_status (INTIME/ONTIME/DELAYED)",
     });
   }
 
   if (trip_arrival_status) {
-    if (trip_arrival_status != "INTIME" && trip_arrival_status != "ONTIME" && trip_arrival_status != "DELAYED") {
+    if (
+      trip_arrival_status != "INTIME" &&
+      trip_arrival_status != "ONTIME" &&
+      trip_arrival_status != "DELAYED"
+    ) {
       return res.status(404).json({
         success: false,
-        message: "Check trip_arrival_status should be INTIME or ONTIME or DELAYED"
+        message:
+          "Check trip_arrival_status should be INTIME or ONTIME or DELAYED",
       });
     } else if (!trip_actual_arrival_time && !trip_arrival_notes) {
       return res.status(404).json({
         success: false,
-        message: "Check trip_actaul_arrival_time/trip_arrival_notes empty"
+        message: "Check trip_actaul_arrival_time/trip_arrival_notes empty",
       });
     }
   }
@@ -691,7 +760,19 @@ exports.updateTripStatus = async (req, res) => {
       }
       return res.status(404).json({
         success: false,
-        message: "No trip found to update status"
+        message: "No trip found to update status",
+      });
+    }
+
+    // Verify trip belongs to requesting client
+    if (trip.client_id.toString() !== req.user?.client_profile_id) {
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Trip does not belong to your client",
       });
     }
 
@@ -703,7 +784,7 @@ exports.updateTripStatus = async (req, res) => {
         }
         return res.status(403).json({
           success: false,
-          message: "Forbidden: Trip is not approved."
+          message: "Forbidden: Trip is not approved.",
         });
       }
       if (!trip.driver_id) {
@@ -713,7 +794,7 @@ exports.updateTripStatus = async (req, res) => {
         }
         return res.status(403).json({
           success: false,
-          message: "Forbidden: Driver is not mapped to the Vehicle."
+          message: "Forbidden: Driver is not mapped to the Vehicle.",
         });
       }
     }
@@ -722,25 +803,28 @@ exports.updateTripStatus = async (req, res) => {
       if (trip.trip_approval_status !== "APPROVED") {
         return res.status(403).json({
           success: false,
-          message: "Forbidden: Trip is not approved."
+          message: "Forbidden: Trip is not approved.",
         });
       }
       if (trip.trip_dep_status !== "DEPARTED") {
         return res.status(403).json({
           success: false,
-          message: "Forbidden: Trip has not departed."
+          message: "Forbidden: Trip has not departed.",
         });
       }
     }
 
     const updateFields = {};
-    if (trip_approval_status) updateFields.trip_approval_status = trip_approval_status;
+    if (trip_approval_status)
+      updateFields.trip_approval_status = trip_approval_status;
     if (trip_dep_status) updateFields.trip_dep_status = trip_dep_status;
     if (trip_arrival_status) {
       updateFields.trip_arrival_status = trip_arrival_status;
-      updateFields.status = 'INACTIVE';
-      if (trip_actual_arrival_time) updateFields.trip_actual_arrival_time = trip_actual_arrival_time;
-      if (trip_arrival_notes) updateFields.trip_arrival_notes = trip_arrival_notes;
+      updateFields.status = "INACTIVE";
+      if (trip_actual_arrival_time)
+        updateFields.trip_actual_arrival_time = trip_actual_arrival_time;
+      if (trip_arrival_notes)
+        updateFields.trip_arrival_notes = trip_arrival_notes;
     }
 
     // Handle cancellation: restore vehicle state (Trip + VehicleState → transaction active)
@@ -757,7 +841,7 @@ exports.updateTripStatus = async (req, res) => {
           }
           return res.status(404).json({
             success: false,
-            message: "Vehicle state not found to restore"
+            message: "Vehicle state not found to restore",
           });
         }
 
@@ -782,8 +866,15 @@ exports.updateTripStatus = async (req, res) => {
     }
 
     const updatedTrip = session
-      ? await Trip.findByIdAndUpdate(assignment_id, updateFields, { new: true, runValidators: true, session })
-      : await Trip.findByIdAndUpdate(assignment_id, updateFields, { new: true, runValidators: true });
+      ? await Trip.findByIdAndUpdate(assignment_id, updateFields, {
+        new: true,
+        runValidators: true,
+        session,
+      })
+      : await Trip.findByIdAndUpdate(assignment_id, updateFields, {
+        new: true,
+        runValidators: true,
+      });
 
     if (!updatedTrip) {
       if (session) {
@@ -792,7 +883,7 @@ exports.updateTripStatus = async (req, res) => {
       }
       return res.status(404).json({
         success: false,
-        message: "Trip not found, please retry"
+        message: "Trip not found, please retry",
       });
     }
 
@@ -802,28 +893,27 @@ exports.updateTripStatus = async (req, res) => {
     }
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'update',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "update",
+      "trip",
       `Trip status updated for trip ${assignment_id}: ${JSON.stringify(updateFields)}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.json({
       success: true,
       message: "Trip status updated successfully",
-      data: updatedTrip
+      data: updatedTrip,
     });
 
     if (["INTIME", "ONTIME", "DELAYED"].includes(trip_arrival_status)) {
       const result = migrateTripToHistory(assignment_id);
       console.log(" [INFO] migrateTripToHistory result:", result);
     }
-
   } catch (err) {
     if (session) {
       await session.abortTransaction();
@@ -832,29 +922,31 @@ exports.updateTripStatus = async (req, res) => {
     console.error(" [ERROR] updateTripStatus failed:", err.message);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
   }
 };
-
 
 // =======================================
 // GET TRIPS BY VEHICLE OR DRIVER (read only → no transaction)
 // =======================================
 exports.getTripsByVehicleOrDriver = async (req, res) => {
-  console.log("tripController: getTripsByVehicleOrDriver API: req.query: ", req.query);
+  console.log(
+    "tripController: getTripsByVehicleOrDriver API: req.query: ",
+    req.query,
+  );
 
   try {
     const { vehicle_id, driver_id } = req.query;
@@ -866,28 +958,32 @@ exports.getTripsByVehicleOrDriver = async (req, res) => {
 
     if (vehicle_id) {
       query = {
+        client_id: req.user?.client_profile_id,
         vehicle_id: vehicle_id,
         status: "ACTIVE",
-        trip_dep_status: "DEPARTED"
+        trip_dep_status: "DEPARTED",
       };
     } else if (driver_id) {
       query = {
+        client_id: req.user?.client_profile_id,
         driver_id: driver_id,
         status: "ACTIVE",
-        trip_dep_status: "DEPARTED"
+        trip_dep_status: "DEPARTED",
       };
     } else {
       console.log("Provide either vehicle_id or driver_id to fetch Trips");
       return res.status(400).json({
         success: false,
-        message: "Provide either vehicle_id or driver_id to fetch Trips"
+        message: "Provide either vehicle_id or driver_id to fetch Trips",
       });
     }
 
     const total = await Trip.countDocuments(query);
 
     if (!total) {
-      return res.status(404).json({ error: "No active Trips found for vehicle" });
+      return res
+        .status(404)
+        .json({ error: "No active Trips found for vehicle" });
     }
 
     const assignments = await Trip.find(query)
@@ -898,7 +994,7 @@ exports.getTripsByVehicleOrDriver = async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
-    const data = assignments.map(a => ({
+    const data = assignments.map((a) => ({
       _id: a._id,
       vehicle_id: a.vehicle_id,
       route_id: a.route_id,
@@ -916,19 +1012,19 @@ exports.getTripsByVehicleOrDriver = async (req, res) => {
       avg_speed: a.avg_speed || 0,
       total_distance: a.total_distance || 0,
       position_name: a.position_name || null,
-      __v: a.__v
+      __v: a.__v,
     }));
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'read',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "read",
+      "trip",
       `Trips fetched for ${vehicle_id ? `vehicle ${vehicle_id}` : `driver ${driver_id}`}, count: ${data.length}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.json({
@@ -936,27 +1032,25 @@ exports.getTripsByVehicleOrDriver = async (req, res) => {
       limit: parseInt(limit),
       total,
       totalPages: Math.ceil(total / limit),
-      data
+      data,
     });
-
   } catch (err) {
     console.error("Error fetching routes with mapped vehicles:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // =======================================
 // ASSIGN VEHICLE TO ROUTE (PoC - read only checks + single Trip write → no transaction)
@@ -971,26 +1065,41 @@ exports.assignVehicleToRoute = async (req, res) => {
     const vehicle = await Vehicle.findById(vehicle_id);
     if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
 
-    const driverAssignment = await DriverVehicle
-      .findOne({ vehicle_id, status: "ACTIVE" })
-      .populate("driver_id", "driver_name mobile_number email_id");
+    const driverAssignment = await DriverVehicle.findOne({
+      vehicle_id,
+      status: "ACTIVE",
+    }).populate("driver_id", "driver_name mobile_number email_id");
 
     let driver_id = null;
     if (driverAssignment && driverAssignment.driver_id) {
       driver_id = driverAssignment.driver_id._id;
-      console.log(`[ASSIGN ROUTE] Vehicle ${vehicle_id} is assigned to driver:`, driverAssignment.driver_id.driver_name);
+      console.log(
+        `[ASSIGN ROUTE] Vehicle ${vehicle_id} is assigned to driver:`,
+        driverAssignment.driver_id.driver_name,
+      );
     } else {
-      console.warn(`[WARN] No active driver found for vehicle ${vehicle_id} during route assignment`);
+      console.warn(
+        `[WARN] No active driver found for vehicle ${vehicle_id} during route assignment`,
+      );
     }
 
-    const existingAssignment = await Trip.findOne({ vehicle_id, status: "ACTIVE" });
+    const existingAssignment = await Trip.findOne({
+      client_id: req.user?.client_profile_id,
+      vehicle_id,
+      status: "ACTIVE",
+    });
     if (existingAssignment) {
       return res.status(409).json({
         error: "This vehicle is already assigned to another active route",
       });
     }
 
-    const assignment = new Trip({ route_id, vehicle_id, driver_id });
+    const assignment = new Trip({
+      client_id: req.user?.client_profile_id,
+      route_id,
+      vehicle_id,
+      driver_id
+    });
     await assignment.save();
 
     const populatedAssignment = await Trip.findById(assignment._id)
@@ -999,15 +1108,15 @@ exports.assignVehicleToRoute = async (req, res) => {
       .populate("driver_id", "driver_name mobile_number email_id");
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'create',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "create",
+      "trip",
       `Vehicle ${vehicle_id} assigned to route ${route_id}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.status(201).json(populatedAssignment);
@@ -1015,20 +1124,19 @@ exports.assignVehicleToRoute = async (req, res) => {
     console.error("Error assigning vehicle to route:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ error: err.message || "Internal server error" });
   }
 };
-
 
 // =======================================
 // GET VEHICLES BY ROUTE (read only → no transaction)
@@ -1036,19 +1144,22 @@ exports.assignVehicleToRoute = async (req, res) => {
 exports.getVehiclesByRoute = async (req, res) => {
   try {
     const { route_id } = req.params;
-    const assignments = await Trip.find({ route_id, status: "ACTIVE" })
-      .populate("vehicle_id", "registration_number model driver_name");
+    const assignments = await Trip.find({
+      client_id: req.user?.client_profile_id,
+      route_id,
+      status: "ACTIVE",
+    }).populate("vehicle_id", "registration_number model driver_name");
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'read',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "read",
+      "trip",
       `Vehicles fetched for route ${route_id}, count: ${assignments.length}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.json(assignments);
@@ -1056,20 +1167,19 @@ exports.getVehiclesByRoute = async (req, res) => {
     console.error("getVehiclesByRoute error:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // =======================================
 // UPDATE TRIP (single Trip write → no transaction)
@@ -1080,7 +1190,15 @@ exports.updateTrip = async (req, res) => {
     const { vehicle_id, route_id } = req.body;
 
     const assignment = await Trip.findById(id);
-    if (!assignment) return res.status(404).json({ message: "Assignment not found" });
+    if (!assignment)
+      return res.status(404).json({ message: "Assignment not found" });
+
+    // Verify trip belongs to requesting client
+    if (assignment.client_id.toString() !== req.user?.client_profile_id) {
+      return res.status(403).json({
+        message: "Forbidden: Trip does not belong to your client",
+      });
+    }
 
     const route = await Route.findById(route_id);
     const vehicle = await Vehicle.findById(vehicle_id);
@@ -1097,15 +1215,15 @@ exports.updateTrip = async (req, res) => {
       .populate("route_id", "name source destination");
 
     await logger.audit(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
-      'update',
-      'trip',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
+      "update",
+      "trip",
       `Trip ${id} updated with vehicle ${vehicle_id} and route ${route_id}`,
-      'success',
+      "success",
       req.user?.tenant_id || null,
-      req.trace_id
+      req.trace_id,
     );
 
     res.json(updatedAssignment);
@@ -1113,35 +1231,25 @@ exports.updateTrip = async (req, res) => {
     console.error("Update assignment error:", err);
 
     await logger.error(
-      req.user?.employee_id || 'SYSTEM',
-      req.user?.employee_id?.name || 'SYSTEM',
-      req.user?.role || 'unknown',
+      req.user?.employee_id || "SYSTEM",
+      req.user?.employee_id?.name || "SYSTEM",
+      req.user?.role || "unknown",
       err,
-      'trip',
+      "trip",
       req.user?.tenant_id || null,
       req.trace_id,
-      500
+      500,
     );
 
     res.status(500).json({ message: err.message });
   }
 };
 
-
-
-
-
-
-
-
-
-
-
 // // /controllers/routeAssignmentController.js
 // const mongoose = require("mongoose");
 // const Route = require("../models/route");
 // const Trip = require("../models/trip");
-// const VehicleState = require("../models/vehicleState"); 
+// const VehicleState = require("../models/vehicleState");
 // const Vehicle = require("../models/vehicle");
 // const DriverVehicle = require("../models/driverVehicleAssignment");
 // const vehicleState = require("../models/vehicleState");
@@ -1156,7 +1264,7 @@ exports.updateTrip = async (req, res) => {
 // Commit/Rollback: If all succeed → commitTransaction(). If any fail → abortTransaction().
 // Consistency: Ensures no partial inserts (e.g., assignment without route/state).
 
-// POST  
+// POST
 // http://localhost:3005/api/trips
 
 // Body (raw JSON):
@@ -1209,7 +1317,6 @@ exports.updateTrip = async (req, res) => {
 //   }
 // }
 // */
-
 
 // exports.createTrip = async (req, res) => {
 //   const session = await mongoose.startSession();
@@ -1376,7 +1483,7 @@ exports.updateTrip = async (req, res) => {
 //       trip_arrival_status: "AWAITED"
 //     };
 
-//     // Get total count first 
+//     // Get total count first
 //     const total = await Trip.countDocuments(query);
 
 //     // Fetch paginated results
@@ -1429,7 +1536,6 @@ exports.updateTrip = async (req, res) => {
 //   }
 // };
 
-
 // // Fetch trips by vehicle_id
 // /*
 // Fixed .populate() calls → one for route_id, one for vehicle_id.
@@ -1462,12 +1568,12 @@ exports.updateTrip = async (req, res) => {
 //     if (trip_arrival_status) query.trip_arrival_status = trip_arrival_status;
 
 //     if (vehicle_id) {
-//       query.vehicle_id = vehicle_id; // expecting ObjectId string 
+//       query.vehicle_id = vehicle_id; // expecting ObjectId string
 //     }
 
 //     console.log('fetchTripsByVehicle: query filter: ', query);
 
-//     // Get total count first 
+//     // Get total count first
 //     const total = await Trip.countDocuments(query);
 
 //     // Fetch paginated results
@@ -1608,7 +1714,6 @@ exports.updateTrip = async (req, res) => {
 //     });
 //   }
 // };
-
 
 // // Fetch all trips by trip_approval_status = APPROVED/PENDING/CANCELLED
 // // or by trip_dep_status = PENDING/APPROVED/CANCELLED
@@ -1841,7 +1946,7 @@ exports.updateTrip = async (req, res) => {
 //     }
 
 //     // Handle cancellation: restore vehicle state
-//     // If trip_approval_status = CANCELLED or trip_dep_status = CANCELLED  
+//     // If trip_approval_status = CANCELLED or trip_dep_status = CANCELLED
 //     // then restore the original status like place_of_availability and next_available_date
 //     if (trip_approval_status === "CANCELLED" || trip_dep_status === "CANCELLED") {
 //       try {
@@ -1908,7 +2013,6 @@ exports.updateTrip = async (req, res) => {
 
 // // --- end ---- 18/02/2026
 
-
 // // Get all trips mapped to a Vehicle or Driver
 // // Useful to fetch all trips carried out by a Vehicle or a Driver
 // exports.getTripsByVehicleOrDriver = async (req, res) => {
@@ -1944,10 +2048,8 @@ exports.updateTrip = async (req, res) => {
 //       });
 //     }
 
-
-//     // Get total count first 
+//     // Get total count first
 //     const total = await Trip.countDocuments(query);
-
 
 //     if (!total) {
 //       return res
