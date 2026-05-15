@@ -26,12 +26,16 @@ const tcpServer = net.createServer(socket => {
 
   // Handle incoming data
   socket.on("data", async data => {
-	  const rawStr = data.toString("ascii").trim();
+    const rawStr = data.toString("ascii").trim();
     try {
       console.log('raw str: ', rawStr);
 
-      // Parse raw string  to JSON	
+      // Parse raw string  to JSON
       const parsed = parseGpsPacket(rawStr);
+      if (!parsed.imei) {
+        console.log('Invalid packet (No IMEI):', rawStr);
+        return;
+      }
 
       // Save raw packet to MongoDB
       const gpsRaw = new GPSRawData({
