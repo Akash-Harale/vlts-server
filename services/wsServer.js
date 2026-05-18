@@ -66,25 +66,38 @@ function broadcastTelemetry(wss, telemetryDoc) {
     ? telemetryDoc.toObject()
     : telemetryDoc;
 
-  console.log('[broadcastTelemetry] Incoming telemetry:', payload);
+  const totalClients = wss.clients.size;
+  console.log(`[WS-BCAST] Total connected WS clients: ${totalClients}`);
+  console.log(`[WS-BCAST] Payload vehicle_id=${payload.vehicle_id} | trip_id=${payload.trip_id} | speed=${payload.speed}`);
 
   // Helper to send payload to all matching clients
   const sendPayload = (geofenceStatus) => {
     const enrichedPayload = { type: 'live', ...payload, geofence_status: geofenceStatus };
-    console.log('[broadcastTelemetry] Broadcasting payload:', enrichedPayload);
+    let sentCount = 0;
 
-    wss.clients.forEach((client) => {
+    wss.clients.forEach((client, idx) => {
       if (client.readyState === WebSocket.OPEN) {
         const { vehicle_id, trip_id, session_id } = client.subscriptions || {};
         const matchVehicle = !vehicle_id || payload.vehicle_id?.toString() === vehicle_id;
-        const matchTrip = !trip_id || payload.trip_id?.toString() === trip_id;
-        const matchSession = !session_id || payload.session_id === session_id;
+        const matchTrip    = !trip_id    || payload.trip_id?.toString()    === trip_id;
+        const matchSession = !session_id || payload.session_id             === session_id;
+
+        console.log(`[WS-BCAST] Client sub: vehicle_id=${vehicle_id} trip_id=${trip_id} session_id=${session_id}`);
+        console.log(`[WS-BCAST]   → matchVehicle=${matchVehicle} matchTrip=${matchTrip} matchSession=${matchSession}`);
 
         if (matchVehicle && matchTrip && matchSession) {
+          console.log('[WS-BCAST] ✓ Sending to client');
           client.send(JSON.stringify(enrichedPayload));
+          sentCount++;
+        } else {
+          console.log('[WS-BCAST] ✗ Skipped (subscription mismatch)');
         }
+      } else {
+        console.log(`[WS-BCAST] ✗ Client not OPEN (readyState=${client.readyState})`);
       }
     });
+
+    console.log(`[WS-BCAST] Sent to ${sentCount}/${totalClients} clients`);
   };
 
   // If route_id exists, enrich with geofence check

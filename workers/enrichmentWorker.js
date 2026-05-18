@@ -110,9 +110,16 @@ async function checkGeofence(routeId, locationPoint) {
 // ── Build enriched telemetry document ──────────────────────
 
 async function buildTelemetry(rawDoc, gpsDevice, vehicle, driverId, routeId, tripId, sessionId) {
+  const lat = rawDoc.raw_payload.lat;
+  const lon = rawDoc.raw_payload.lon;
+
+  if (lat == null || lon == null || Number.isNaN(lat) || Number.isNaN(lon)) {
+    throw new Error(`Invalid coordinates: lat=${lat} lon=${lon} — skipping packet ${rawDoc._id}`);
+  }
+
   const locationPoint = {
     type: 'Point',
-    coordinates: [rawDoc.raw_payload.lon, rawDoc.raw_payload.lat]
+    coordinates: [lon, lat]
   };
 
   // last_updated is the timestamp from the device payload itself (sending time)
@@ -233,14 +240,30 @@ async function processRawPackets(wss) {
 
   for (const rawDoc of rawDocs) {
     try {
+      console.log(`\n[PIPE-0] ─── Processing rawDoc: ${rawDoc._id} | IMEI: ${rawDoc.imei}`);
+
       const gpsDevice = await resolveDevice(rawDoc);
-      if (!gpsDevice) continue;
+      if (!gpsDevice) {
+        console.warn(`[PIPE-1] ✗ resolveDevice FAILED for IMEI: ${rawDoc.imei} — device not found or not ACTIVE`);
+        continue;
+      }
+      console.log(`[PIPE-1] ✓ resolveDevice OK → device._id: ${gpsDevice._id}`);
 
       const vehicle = await resolveVehicle(gpsDevice, rawDoc);
-      if (!vehicle) continue;
+      if (!vehicle) {
+        console.warn(`[PIPE-2] ✗ resolveVehicle FAILED for device: ${gpsDevice._id} — no MAPPED vehicle assignment`);
+        continue;
+      }
+      console.log(`[PIPE-2] ✓ resolveVehicle OK → vehicle._id: ${vehicle._id} | reg: ${vehicle.registration_number}`);
 
       const { driverId, routeId, tripId } = await resolveTripAndDriver(vehicle);
+      console.log(`[PIPE-3] resolveTripAndDriver → tripId: ${tripId} | driverId: ${driverId} | routeId: ${routeId}`);
+      if (!tripId) {
+        console.warn(`[PIPE-3] ⚠ No active trip found for vehicle ${vehicle._id}. Telemetry will be saved but trip_id will be null.`);
+      }
+
       const sessionId = getOrCreateSession(vehicle._id);
+      console.log(`[PIPE-3] sessionId: ${sessionId}`);
 
       const telemetryDoc = await buildTelemetry(
         rawDoc,
@@ -251,6 +274,7 @@ async function processRawPackets(wss) {
         tripId,
         sessionId
       );
+      console.log(`[PIPE-4] ✓ buildTelemetry OK → speed: ${telemetryDoc.speed} | state: ${telemetryDoc.state} | vehicle_id: ${telemetryDoc.vehicle_id} | trip_id: ${telemetryDoc.trip_id}`);
 
       // Debug log
       console.log(
@@ -262,6 +286,7 @@ async function processRawPackets(wss) {
 
       await telemetryDoc.save();
       await GPSRawData.updateOne({ _id: rawDoc._id }, { processed: true });
+      console.log(`[PIPE-4] ✓ Telemetry saved: ${telemetryDoc._id}`);
 
       // Update trip stats if applicable
       if (tripId) {
@@ -280,14 +305,21 @@ async function processRawPackets(wss) {
             }
           }
         );
+        console.log(`[PIPE-4] ✓ Trip stats updated for tripId: ${tripId}`);
       }
 
+      console.log(`[PIPE-5] → broadcastTelemetry called for vehicle: ${telemetryDoc.vehicle_id} | trip: ${telemetryDoc.trip_id}`);
       broadcastTelemetry(wss, telemetryDoc);
       await triggerAlerts(telemetryDoc);
 
-      console.log(`[enrichment] Saved & broadcasted: ${telemetryDoc._id}`);
+      console.log(`[enrichment] ✓ Done: ${telemetryDoc._id}`);
     } catch (err) {
-      console.error('[enrichment] Error processing packet:', err.message, err.stack);
+      console.error('[enrichment] Error processing packet:', err.message);
+      // Mark as processed with error so it is NOT retried on every poll cycle
+      await GPSRawData.updateOne(
+        { _id: rawDoc._id },
+        { processed: true, error: err.message.slice(0, 200) }
+      ).catch(() => {});
     }
   }
 }
