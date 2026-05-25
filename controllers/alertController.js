@@ -165,23 +165,53 @@ const createAlert = async (req, res) => {
 const updateAlert = async (req, res) => {
     try {
         const alert = await Alert.findById(req.params.id);
+
         if (!alert) {
             return res.status(404).json({
                 message: "Alert not found",
-            })
+            });
         }
-        const updatedAlert = await Alert.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+        const updateData = { ...req.body };
+
+        // Parse date-time strings if provided
+        if (updateData.start_time) {
+            updateData.start_time = parseAlertDateTime(updateData.start_time);
+        }
+
+        if (updateData.end_time) {
+            updateData.end_time = parseAlertDateTime(updateData.end_time);
+        }
+
+        const updatedAlert = await Alert.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        const formattedAlert = {
+            ...updatedAlert.toObject(),
+            start_time: formatAlertDateTime(updatedAlert.start_time),
+            end_time: formatAlertDateTime(updatedAlert.end_time)
+        };
+
         res.status(200).json({
             message: "Alert updated successfully",
-            alert: updatedAlert
-        })
+            alert: formattedAlert
+        });
+
     } catch (error) {
+        console.error(error);
+
         res.status(500).json({
             message: "Error updating alert",
-            error
-        })
+            error: error.message
+        });
     }
-}
+};
 
 // find all alerts of client by gps_id and then mark the status of all true/false
 const updateAllAlerts = async (req, res) => {
