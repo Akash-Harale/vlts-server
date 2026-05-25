@@ -6,10 +6,10 @@ const mongoose = require('mongoose');
 
 const clientProfileSchema = new mongoose.Schema({
   tenant_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
-  entity_name: { type: String, required: true },
+  entity_name: { type: String },
   contact_name: { type: String, required: true },
-  gst_number: { type: String, required: true, unique: true },
-  cin_number: { type: String, required: true, unique: true },
+  gst_number: { type: String },
+  cin_number: { type: String },
   address1: { type: String },
   address2: { type: String },
   city: { type: String },
