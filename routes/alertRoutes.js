@@ -11,7 +11,7 @@ router.post("/:vehicle_id", authMiddleware(["create_alert"]), createAlert)
 // update alert
 router.put("/:id", authMiddleware(["update_alert"]), updateAlert)
 // update all   
-router.put("/gps/:id", authMiddleware(["update_alert"]), updateAllAlerts)
+router.put("/update-all/:vehicle_id", authMiddleware(["update_alert"]), updateAllAlerts)
 
 
 // delete alert 

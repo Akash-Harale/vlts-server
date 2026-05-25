@@ -216,16 +216,21 @@ const updateAlert = async (req, res) => {
 // find all alerts of client by gps_id and then mark the status of all true/false
 const updateAllAlerts = async (req, res) => {
     try {
-        const alerts = await Alert.find({ gps_id: req.params.gps_id });
+        const gps_id = await getGpsDeviceIdByVehicleId(req.params.vehicle_id);
+        if (!gps_id) {
+            return res.status(404).json({
+                message: "GPS device ID not found",
+            })
+        }
+        const alerts = await Alert.find({ gps_id: gps_id });
         if (!alerts) {
             return res.status(404).json({
                 message: "Alerts not found",
             })
         }
-        const updatedAlerts = await Alert.updateMany({ gps_id: req.params.gps_id }, { status: req.body.status });
+        const updatedAlerts = await Alert.updateMany({ gps_id: gps_id }, { status: req.body.status });
         res.status(200).json({
             message: "Alerts updated successfully",
-            alerts: updatedAlerts
         })
     } catch (error) {
         res.status(500).json({
