@@ -19,38 +19,38 @@ const IST_OFFSET = "+05:30";
  *   → treats as 08:30 IST on today's date
  *   → stores as 03:00 UTC in DB
  */
-function parseAlertTime(timeStr) {
-    if (!timeStr || typeof timeStr !== "string") {
-        throw new Error(`Invalid time: expected a string like "08:30 AM", got: ${timeStr}`);
+
+function parseAlertDateTime(dateTimeStr) {
+    if (!dateTimeStr || typeof dateTimeStr !== "string") {
+        throw new Error("Invalid date-time");
     }
 
-    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    const match = dateTimeStr.trim().match(
+        /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+    );
+
     if (!match) {
-        throw new Error(`Invalid time format: "${timeStr}". Expected "HH:MM AM" or "HH:MM PM"`);
+        throw new Error(
+            'Expected format: "DD/MM/YYYY hh:mm AM/PM"'
+        );
     }
 
-    let [, rawHours, rawMinutes, period] = match;
+    let [, day, month, year, rawHours, minutes, period] = match;
+
     let hours = parseInt(rawHours, 10);
-    const minutes = parseInt(rawMinutes, 10);
     period = period.toUpperCase();
 
-    if (hours < 1 || hours > 12) throw new Error("Hours must be between 1 and 12");
-    if (minutes < 0 || minutes > 59) throw new Error("Minutes must be between 0 and 59");
-
-    // Convert 12-hour to 24-hour
-    if (period === "AM" && hours === 12) hours = 0;   // 12:xx AM → 0:xx
-    if (period === "PM" && hours !== 12) hours += 12; // x:xx PM  → (x+12):xx
+    if (period === "AM" && hours === 12) hours = 0;
+    if (period === "PM" && hours !== 12) hours += 12;
 
     const pad = (n) => String(n).padStart(2, "0");
 
-    // Get today's date string in IST (e.g. "2026-05-25")
-    const todayIST = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-
-    // Build ISO 8601 string with IST offset — JS will correctly convert to UTC internally
-    const isoString = `${todayIST}T${pad(hours)}:${pad(minutes)}:00${IST_OFFSET}`;
+    const isoString =
+        `${year}-${month}-${day}T${pad(hours)}:${minutes}:00${IST_OFFSET}`;
 
     return new Date(isoString);
 }
+
 
 /**
  * Formats a UTC Date object into a 12-hour IST time string.
@@ -84,9 +84,9 @@ function formatAlertTime(date) {
  * @returns {string}    e.g. "25/05/2026, 08:30 AM"
  */
 function formatAlertDateTime(date) {
-    if (!date || !(date instanceof Date) || isNaN(date)) return null;
+    if (!date || isNaN(date)) return null;
 
-    return date
+    return new Date(date)
         .toLocaleString("en-IN", {
             timeZone: "Asia/Kolkata",
             day: "2-digit",
@@ -94,11 +94,10 @@ function formatAlertDateTime(date) {
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-            hour12: true,
+            hour12: true
         })
-        .toUpperCase()
-        .replace(/\s+/g, " ")
-        .trim();
+        .toUpperCase();
 }
 
-module.exports = { parseAlertTime, formatAlertTime, formatAlertDateTime };
+
+module.exports = { parseAlertDateTime, formatAlertTime, formatAlertDateTime };

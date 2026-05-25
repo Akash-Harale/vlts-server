@@ -1,6 +1,6 @@
 const Alert = require("../models/alert.model");
 const { getGpsDeviceIdByVehicleId } = require("../utils/getGpsDeviceIdByVehicleId");
-const { parseAlertTime, formatAlertDateTime } = require("../utils/alertTimeUtils");
+const { parseAlertDateTime, formatAlertDateTime } = require("../utils/alertTimeUtils");
 
 // you will get vehicle id from params, get tha vehicle and find the gps id from the vehicle-gps mapping collection and then find alert by gps id.
 
@@ -35,7 +35,7 @@ const getAllAlerts = async (req, res) => {
             return {
                 ...obj,
                 start_time: formatAlertDateTime(obj.start_time),  // e.g. "08:30 AM"
-                end_time:   formatAlertDateTime(obj.end_time),    // e.g. "06:45 PM"
+                end_time: formatAlertDateTime(obj.end_time),    // e.g. "06:45 PM"
             };
         });
 
@@ -53,7 +53,7 @@ const getAllAlerts = async (req, res) => {
 
 const createAlert = async (req, res) => {
     const client_id = req.user.client_profile_id;
-   
+
     try {
         const { vehicle_id } = req.params;
         const { alert_type, status, day, start_time, end_time, location, radius, tamper_alert, fuel_alert, movement_alert, ignition_alert } = req.body;
@@ -64,7 +64,7 @@ const createAlert = async (req, res) => {
             return res.status(400).json({
                 message: "Client ID is required",
             })
-        } 
+        }
         if (!vehicle_id) {
             return res.status(400).json({
                 message: "Vehicle ID is required",
@@ -80,7 +80,7 @@ const createAlert = async (req, res) => {
                 message: "Alert type is required",
             })
         }
-        if (!status) {
+        if (status === undefined || status === null) {
             return res.status(400).json({
                 message: "Status is required",
             })
@@ -110,22 +110,22 @@ const createAlert = async (req, res) => {
                 message: "Radius is required",
             })
         }
-        if (!tamper_alert) {
+        if (tamper_alert === undefined || tamper_alert === null) {
             return res.status(400).json({
                 message: "Tamper alert is required",
             })
         }
-        if (!fuel_alert) {
+        if (fuel_alert === undefined || fuel_alert === null) {
             return res.status(400).json({
                 message: "Fuel alert is required",
             })
         }
-        if (!movement_alert) {
+        if (movement_alert === undefined || movement_alert === null) {
             return res.status(400).json({
                 message: "Movement alert is required",
             })
         }
-        if (!ignition_alert) {
+        if (ignition_alert === undefined || ignition_alert === null) {
             return res.status(400).json({
                 message: "Ignition alert is required",
             })
@@ -134,12 +134,12 @@ const createAlert = async (req, res) => {
         const newAlert = new Alert({
             client_id,
             vehicle_id,
-            gps_id:gps_device_id,
+            gps_id: gps_device_id,
             alert_type,
             status,
             day,
-            start_time: parseAlertTime(start_time),  // "08:30 AM" → UTC Date
-            end_time:   parseAlertTime(end_time),     // "06:45 PM" → UTC Date
+            start_time: parseAlertDateTime(start_time),  // "08:30 AM" → UTC Date
+            end_time: parseAlertDateTime(end_time),     // "06:45 PM" → UTC Date
             location,
             radius,
             tamper_alert,
@@ -153,10 +153,12 @@ const createAlert = async (req, res) => {
             alert: savedAlert
         })
     } catch (error) {
+        console.error(error);
         res.status(500).json({
             message: "Error creating alert",
-            error
-        })
+            error: error.message,
+            stack: error.stack
+        });
     }
 }
 
