@@ -57,6 +57,7 @@ const telemetryDashboardRoutes = require("./routes/telemetryDashboardRoutes");
 
 const driverRoutes = require("./routes/driverRoutes");
 const helpDeskRoutes = require("./routes/helpDeskRoutes");
+const { alertRoutes } = require("./routes/alertRoutes");
 
 // Import health check job
 require("./jobs/deviceHealthCheck");
@@ -104,6 +105,7 @@ app.use("/api/user", userRoutes )
 
 // Route entries
 app.use("/api", driverVehicleRoutes); // Driver-Vehicle Assignment CRUD
+app.use("/api/alert", alertRoutes)
 
 app.use("/api/driver", driverRoutes); // Driver CRUD
 app.use("/api/trip", tripRoutes);

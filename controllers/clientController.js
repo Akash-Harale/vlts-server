@@ -51,9 +51,9 @@ exports.createClient = async (req, res, next) => {
 
     console.log('createClient request body:', req.body, 'by user:', req.user);
 
-    if (!entity_name || !gst_number || !cin_number) {
-        return res.status(400).json({ message: "Required fields missing" });
-    }
+    // if (!entity_name || !gst_number || !cin_number) {
+    //     return res.status(400).json({ message: "Required fields missing" });
+    // }
 
     const MAX_RETRIES = parseInt(process.env.TRANSACTION_MAX_RETRIES || "3", 10);
     const BASE_DELAY_MS = parseInt(process.env.TRANSACTION_BACKOFF_MS || "100", 10);
