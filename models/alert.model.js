@@ -16,8 +16,8 @@ const alertSchema = new mongoose.Schema({
         type: String,
         enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     },
-    start_time: String,
-    end_time: String,
+    start_time: { type: Date },   // stored as UTC, display in IST via util
+    end_time: { type: Date },     // stored as UTC, display in IST via util
     location: [{
         longitude: Number,
         latitude: Number,
@@ -28,7 +28,7 @@ const alertSchema = new mongoose.Schema({
     fuel_alert: { type: Boolean, default: true },
     movement_alert: { type: Boolean, default: true },
     ignition_alert: { type: Boolean, default: true },
-});
+}, { timestamps: true });
 
 const Alert = mongoose.model("Alert", alertSchema);
 

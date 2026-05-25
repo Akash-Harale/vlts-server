@@ -1,6 +1,6 @@
 const Alert = require("../models/alert.model");
-
 const { getGpsDeviceIdByVehicleId } = require("../utils/getGpsDeviceIdByVehicleId");
+const { parseAlertTime, formatAlertDateTime } = require("../utils/alertTimeUtils");
 
 // you will get vehicle id from params, get tha vehicle and find the gps id from the vehicle-gps mapping collection and then find alert by gps id.
 
@@ -15,20 +15,33 @@ const getAllAlerts = async (req, res) => {
             })
         }
         const gps_device_id = await getGpsDeviceIdByVehicleId(vehicle_id);
-        console.log("gps_device_id", gps_device_id);
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
         const allAlerts = await Alert.find({
             gps_id: gps_device_id,
-            client_id: req.user.client_profile_id
-        });
+            client_id: req.user.client_profile_id,
+            end_time: { $gte: oneDayAgo }  // end_time >= 1 day ago (includes future)
+        }).sort({ end_time: 1 });
         const count = allAlerts.length;
         if (!count) {
             return res.status(200).json({
                 message: "No alerts found",
             })
         }
+
+        // Format start_time & end_time from UTC → IST 12-hour string for response
+        const formattedAlerts = allAlerts.map((alert) => {
+            const obj = alert.toObject();
+            return {
+                ...obj,
+                start_time: formatAlertDateTime(obj.start_time),  // e.g. "08:30 AM"
+                end_time:   formatAlertDateTime(obj.end_time),    // e.g. "06:45 PM"
+            };
+        });
+
         res.status(200).json({
             message: `All alerts fetched successfully with count ${count}`,
-            allAlerts
+            allAlerts: formattedAlerts
         })
     } catch (error) {
         res.status(500).json({
@@ -125,8 +138,8 @@ const createAlert = async (req, res) => {
             alert_type,
             status,
             day,
-            start_time,
-            end_time,
+            start_time: parseAlertTime(start_time),  // "08:30 AM" → UTC Date
+            end_time:   parseAlertTime(end_time),     // "06:45 PM" → UTC Date
             location,
             radius,
             tamper_alert,
