@@ -254,6 +254,59 @@ const deleteAllAlerts = async (req, res) => {
     })
 }
 
+const alertHistory = async (req, res) => {
+    const client_id = req.user.client_profile_id;
+    const { vehicle_id } = req.params;
+
+    try {
+        const gps_id = await getGpsDeviceIdByVehicleId(vehicle_id);
+
+        if (!gps_id) {
+            return res.status(404).json({
+                message: "GPS device ID not found",
+            });
+        }
+
+        const yesterdayStart = new Date();
+        yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+        yesterdayStart.setHours(0, 0, 0, 0);
+
+        const alerts = await Alert.find({
+            gps_id,
+            client_id,
+            end_time: { $lt: yesterdayStart }
+        }).sort({ end_time: -1 });
+
+        if (!alerts.length) {
+            return res.status(200).json({
+                message: "No alert history found",
+                alerts: []
+            });
+        }
+
+        const formattedAlerts = alerts.map((alert) => {
+            const obj = alert.toObject();
+
+            return {
+                ...obj,
+                start_time: formatAlertDateTime(obj.start_time),
+                end_time: formatAlertDateTime(obj.end_time)
+            };
+        });
+
+        res.status(200).json({
+            message: "Alert history fetched successfully",
+            alerts: formattedAlerts
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error fetching alert history",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllAlerts,
     createAlert,
@@ -261,4 +314,5 @@ module.exports = {
     updateAllAlerts,
     deleteAlert,
     deleteAllAlerts,
+    alertHistory
 }

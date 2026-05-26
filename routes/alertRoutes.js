@@ -1,5 +1,5 @@
 const express = require("express");
-const { getAllAlerts, createAlert, updateAlert, updateAllAlerts, deleteAlert, deleteAllAlerts } = require("../controllers/alertController");
+const { getAllAlerts, createAlert, updateAlert, updateAllAlerts, deleteAlert, deleteAllAlerts, alertHistory } = require("../controllers/alertController");
 const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
 
@@ -12,12 +12,11 @@ router.post("/:vehicle_id", authMiddleware(["create_alert"]), createAlert)
 router.put("/:id", authMiddleware(["update_alert"]), updateAlert)
 // update all   
 router.put("/update-all/:vehicle_id", authMiddleware(["update_alert"]), updateAllAlerts)
-
-
 // delete alert 
 router.delete("/:id", authMiddleware(["delete_alert"]), deleteAlert)
 // delete all
 router.delete("/", authMiddleware(["delete_alert"]), deleteAllAlerts)
-
+// alert History
+router.get("/history/:vehicle_id", authMiddleware(["read_alert"]), alertHistory)
 
 exports.alertRoutes = router;
