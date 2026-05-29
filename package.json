@@ -7,7 +7,7 @@
     "start": "node server.js",
     "tcpserver": "node ./services/tcpServer.js",
     "gpssimulator": "node ./simulator/gpsSimulator.js",
-    "start:all": "npm run tcpserver & npm start", 
+    "start:all": "npm run tcpserver & npm start",
     "dev": "nodemon server.js"
   },
   "keywords": [
@@ -38,6 +38,7 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "jest": "^30.4.2",
     "nodemon": "^3.0.2"
   }
 }
