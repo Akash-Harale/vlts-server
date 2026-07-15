@@ -1,11 +1,15 @@
 services:
   app:
     image: vlts-server:v1.0
+    build: .
     container_name: vlts-server
     restart: always
     ports:
       - "10.97.171.181:3008:3000"
       - "0.0.0.0:3009:3007"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:
