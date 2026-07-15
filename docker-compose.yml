@@ -1,16 +1,14 @@
-version: "3.9"
-
 services:
   app:
-    build: .
+    image: vlts-server:v1.0
     container_name: vlts-server
     restart: always
     ports:
-      - "127.0.0.1:3006:3000"
-      - "0.0.0.0:3007:3007"
+      - "10.97.171.181:3008:3000"
+      - "0.0.0.0:3009:3007"
     env_file:
       - .env
     environment:
-      - HOST=0.0.0.0
-      - PORT=3000
-      - TCP_PORT=3007
+      HOST: 0.0.0.0
+      PORT: 3000
+      TCP_PORT: 3007
