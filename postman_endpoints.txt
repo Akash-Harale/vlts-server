@@ -1,0 +1,532 @@
+Found 106 endpoints in Postman Collection:
+
+1. [POST] POST /api/routes
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes
+   Body Mode: raw
+
+2. [GET] GET /api/routes
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes
+   Body Mode: none
+
+3. [DELETE] DELETE /api/routes/:id
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/:id
+   Body Mode: none
+
+4. [GET] GET /api/routes/summary
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/summary
+   Body Mode: none
+
+5. [GET] GET /api/routes/id/:id
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/id/:id
+   Body Mode: none
+
+6. [GET] GET /api/routes/name/:name
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/name/:name
+   Body Mode: none
+
+7. [GET] GET /api/routes/geocodes
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/geocodes
+   Body Mode: none
+
+8. [GET] GET /api/routes/sldistance
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/sldistance
+   Body Mode: none
+
+9. [GET] GET /api/routes/multi-routes
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/multi-routes
+   Body Mode: none
+
+10. [GET] GET /api/routes/multi-routes-with-stops
+   Path: Route Routes.js
+   URL: {{baseUrl}}/api/routes/multi-routes-with-stops
+   Body Mode: none
+
+11. [POST] POST /api/vehicle/
+   Path: Vehicle Routes.js
+   URL: {{baseUrl}}/api/vehicle/
+   Body Mode: raw
+
+12. [GET] GET /api/vehicle/
+   Path: Vehicle Routes.js
+   URL: {{baseUrl}}/api/vehicle/
+   Body Mode: none
+
+13. [GET] GET /api/vehicle/:id
+   Path: Vehicle Routes.js
+   URL: {{baseUrl}}/api/vehicle/:id
+   Body Mode: none
+
+14. [PUT] PUT /api/vehicle/:id
+   Path: Vehicle Routes.js
+   URL: {{baseUrl}}/api/vehicle/:id
+   Body Mode: raw
+
+15. [DELETE] DELETE /api/vehicle/:id
+   Path: Vehicle Routes.js
+   URL: {{baseUrl}}/api/vehicle/:id
+   Body Mode: none
+
+16. [POST] POST /api/positions
+   Path: Position Routes.js
+   URL: {{baseUrl}}/api/positions
+   Body Mode: raw
+
+17. [GET] GET /api/positions
+   Path: Position Routes.js
+   URL: {{baseUrl}}/api/positions
+   Body Mode: none
+
+18. [POST] POST /api/deviations/check
+   Path: Deviation Routes.js
+   URL: {{baseUrl}}/api/deviations/check
+   Body Mode: raw
+
+19. [POST] POST /api/deviations/checkvehicle
+   Path: Deviation Routes.js
+   URL: {{baseUrl}}/api/deviations/checkvehicle
+   Body Mode: raw
+
+20. [GET] GET /api/replay
+   Path: Trip Replay Routes.js
+   URL: {{baseUrl}}/api/replay
+   Body Mode: none
+
+21. [POST] POST /api/gps-allocation/technician
+   Path: Gps Allocation
+   URL: {{baseUrl}}/api/gps-allocation/technician
+   Body Mode: raw
+
+22. [POST] POST /api/gps-allocation/salesperson
+   Path: Gps Allocation
+   URL: {{baseUrl}}/api/gps-allocation/salesperson
+   Body Mode: raw
+
+23. [GET] GET /api/user/roles
+   Path: User
+   URL: {{baseUrl}}/api/user/roles
+   Body Mode: none
+
+24. [POST] POST /api/user/
+   Path: User
+   URL: {{baseUrl}}/api/user/
+   Body Mode: raw
+
+25. [GET] GET /api/user/
+   Path: User
+   URL: {{baseUrl}}/api/user/
+   Body Mode: none
+
+26. [GET] GET /api/user/:id
+   Path: User
+   URL: {{baseUrl}}/api/user/:id
+   Body Mode: none
+
+27. [PUT] PUT /api/user/:id
+   Path: User
+   URL: {{baseUrl}}/api/user/:id
+   Body Mode: raw
+
+28. [DELETE] DELETE /api/user/:id
+   Path: User
+   URL: {{baseUrl}}/api/user/:id
+   Body Mode: none
+
+29. [POST] POST /api/driverassignments
+   Path: Driver Vehicle Routes.js
+   URL: {{baseUrl}}/api/driverassignments
+   Body Mode: raw
+
+30. [GET] GET /api/driverassignments
+   Path: Driver Vehicle Routes.js
+   URL: {{baseUrl}}/api/driverassignments
+   Body Mode: none
+
+31. [GET] GET /api/driverassignments/:id
+   Path: Driver Vehicle Routes.js
+   URL: {{baseUrl}}/api/driverassignments/:id
+   Body Mode: none
+
+32. [PUT] PUT /api/driverassignments/:id
+   Path: Driver Vehicle Routes.js
+   URL: {{baseUrl}}/api/driverassignments/:id
+   Body Mode: raw
+
+33. [DELETE] DELETE /api/driverassignments/:id
+   Path: Driver Vehicle Routes.js
+   URL: {{baseUrl}}/api/driverassignments/:id
+   Body Mode: none
+
+34. [GET] GET /api/alert/:vehicle_id
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/:vehicle_id
+   Body Mode: none
+
+35. [POST] POST /api/alert/:vehicle_id
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/:vehicle_id
+   Body Mode: raw
+
+36. [PUT] PUT /api/alert/:id
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/:id
+   Body Mode: raw
+
+37. [PUT] PUT /api/alert/update-all/:vehicle_id
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/update-all/:vehicle_id
+   Body Mode: raw
+
+38. [DELETE] DELETE /api/alert/:id
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/:id
+   Body Mode: none
+
+39. [DELETE] DELETE /api/alert/
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/
+   Body Mode: none
+
+40. [GET] GET /api/alert/history/:vehicle_id
+   Path: Alert Routes.js
+   URL: {{baseUrl}}/api/alert/history/:vehicle_id
+   Body Mode: none
+
+41. [GET] GET /api/school-driver/vehicle
+   Path: School Driver Routes.js
+   URL: {{baseUrl}}/api/school-driver/vehicle
+   Body Mode: none
+
+42. [GET] GET /api/school-driver/temp-route
+   Path: School Driver Routes.js
+   URL: {{baseUrl}}/api/school-driver/temp-route
+   Body Mode: none
+
+43. [POST] POST /api/school-driver/temp-route
+   Path: School Driver Routes.js
+   URL: {{baseUrl}}/api/school-driver/temp-route
+   Body Mode: raw
+
+44. [PUT] PUT /api/school-driver/temp-route/:route_id
+   Path: School Driver Routes.js
+   URL: {{baseUrl}}/api/school-driver/temp-route/:route_id
+   Body Mode: raw
+
+45. [DELETE] DELETE /api/school-driver/temp-route/:route_id
+   Path: School Driver Routes.js
+   URL: {{baseUrl}}/api/school-driver/temp-route/:route_id
+   Body Mode: none
+
+46. [POST] POST /api/driver/
+   Path: Driver Routes.js
+   URL: {{baseUrl}}/api/driver/
+   Body Mode: raw
+
+47. [GET] GET /api/driver/
+   Path: Driver Routes.js
+   URL: {{baseUrl}}/api/driver/
+   Body Mode: none
+
+48. [GET] GET /api/driver/:id
+   Path: Driver Routes.js
+   URL: {{baseUrl}}/api/driver/:id
+   Body Mode: none
+
+49. [PUT] PUT /api/driver/:id
+   Path: Driver Routes.js
+   URL: {{baseUrl}}/api/driver/:id
+   Body Mode: raw
+
+50. [DELETE] DELETE /api/driver/:id
+   Path: Driver Routes.js
+   URL: {{baseUrl}}/api/driver/:id
+   Body Mode: none
+
+51. [POST] POST /api/driver/login
+   Path: Driver Routes.js
+   URL: {{baseUrl}}/api/driver/login
+   Body Mode: raw
+
+52. [POST] POST /api/client-auth/login
+   Path: Client Auth Routes.js
+   URL: {{baseUrl}}/api/client-auth/login
+   Body Mode: raw
+
+53. [POST] POST /api/client-auth/logout
+   Path: Client Auth Routes.js
+   URL: {{baseUrl}}/api/client-auth/logout
+   Body Mode: raw
+
+54. [POST] POST /api/client-auth/refresh
+   Path: Client Auth Routes.js
+   URL: {{baseUrl}}/api/client-auth/refresh
+   Body Mode: raw
+
+55. [GET] GET /api/client-auth/profile
+   Path: Client Auth Routes.js
+   URL: {{baseUrl}}/api/client-auth/profile
+   Body Mode: none
+
+56. [GET] GET /api/client-auth/me
+   Path: Client Auth Routes.js
+   URL: {{baseUrl}}/api/client-auth/me
+   Body Mode: none
+
+57. [GET] GET /api/driverswithuserid
+   Path: Driver User Routes.js
+   URL: {{baseUrl}}/api/driverswithuserid
+   Body Mode: none
+
+58. [POST] POST /api/gps/
+   Path: Gps Device Routes.js
+   URL: {{baseUrl}}/api/gps/
+   Body Mode: raw
+
+59. [GET] GET /api/gps/
+   Path: Gps Device Routes.js
+   URL: {{baseUrl}}/api/gps/
+   Body Mode: none
+
+60. [GET] GET /api/gps/:id
+   Path: Gps Device Routes.js
+   URL: {{baseUrl}}/api/gps/:id
+   Body Mode: none
+
+61. [PUT] PUT /api/gps/:id
+   Path: Gps Device Routes.js
+   URL: {{baseUrl}}/api/gps/:id
+   Body Mode: raw
+
+62. [DELETE] DELETE /api/gps/:id
+   Path: Gps Device Routes.js
+   URL: {{baseUrl}}/api/gps/:id
+   Body Mode: none
+
+63. [POST] POST /api/gps/:id/heartbeat
+   Path: Gps Device Routes.js
+   URL: {{baseUrl}}/api/gps/:id/heartbeat
+   Body Mode: raw
+
+64. [POST] POST /api/assignments/gps-vehicle
+   Path: Vehicle Device Map Routes.js
+   URL: {{baseUrl}}/api/assignments/gps-vehicle
+   Body Mode: raw
+
+65. [GET] GET /api/assignments/gps-vehicle/:id
+   Path: Vehicle Device Map Routes.js
+   URL: {{baseUrl}}/api/assignments/gps-vehicle/:id
+   Body Mode: none
+
+66. [POST] POST /api/clients/
+   Path: Clients Routes.js
+   URL: {{baseUrl}}/api/clients/
+   Body Mode: raw
+
+67. [GET] GET /api/clients/
+   Path: Clients Routes.js
+   URL: {{baseUrl}}/api/clients/
+   Body Mode: none
+
+68. [GET] GET /api/clients/:id
+   Path: Clients Routes.js
+   URL: {{baseUrl}}/api/clients/:id
+   Body Mode: none
+
+69. [PUT] PUT /api/clients/:id
+   Path: Clients Routes.js
+   URL: {{baseUrl}}/api/clients/:id
+   Body Mode: raw
+
+70. [DELETE] DELETE /api/clients/:id
+   Path: Clients Routes.js
+   URL: {{baseUrl}}/api/clients/:id
+   Body Mode: none
+
+71. [POST] POST /api/auth/superadmin/login
+   Path: Super Admin Routes.js
+   URL: {{baseUrl}}/api/auth/superadmin/login
+   Body Mode: raw
+
+72. [POST] POST /api/auth/superadmin/logout
+   Path: Super Admin Routes.js
+   URL: {{baseUrl}}/api/auth/superadmin/logout
+   Body Mode: raw
+
+73. [POST] POST /api/auth/superadmin/refresh
+   Path: Super Admin Routes.js
+   URL: {{baseUrl}}/api/auth/superadmin/refresh
+   Body Mode: raw
+
+74. [POST] POST /api/auth/tenantadmin/login
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/login
+   Body Mode: raw
+
+75. [POST] POST /api/auth/tenantadmin/logout
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/logout
+   Body Mode: raw
+
+76. [POST] POST /api/auth/tenantadmin/refresh
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/refresh
+   Body Mode: raw
+
+77. [POST] POST /api/auth/tenantadmin/users
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/users
+   Body Mode: raw
+
+78. [GET] GET /api/auth/tenantadmin/users
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/users
+   Body Mode: none
+
+79. [GET] GET /api/auth/tenantadmin/users/:id
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/users/:id
+   Body Mode: none
+
+80. [PUT] PUT /api/auth/tenantadmin/users/:id
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/users/:id
+   Body Mode: raw
+
+81. [DELETE] DELETE /api/auth/tenantadmin/users/:id
+   Path: Tenant Admin Routes.js
+   URL: {{baseUrl}}/api/auth/tenantadmin/users/:id
+   Body Mode: none
+
+82. [POST] POST /api/auth/tenantuser/login
+   Path: Tenant User Auth Routes.js
+   URL: {{baseUrl}}/api/auth/tenantuser/login
+   Body Mode: raw
+
+83. [POST] POST /api/auth/tenantuser/logout
+   Path: Tenant User Auth Routes.js
+   URL: {{baseUrl}}/api/auth/tenantuser/logout
+   Body Mode: raw
+
+84. [POST] POST /api/auth/tenantuser/refresh
+   Path: Tenant User Auth Routes.js
+   URL: {{baseUrl}}/api/auth/tenantuser/refresh
+   Body Mode: raw
+
+85. [POST] POST /api/archiveExpiredAssignments
+   Path: Archive Routes.js
+   URL: {{baseUrl}}/api/archiveExpiredAssignments
+   Body Mode: raw
+
+86. [GET] GET /api/archivedAssignments
+   Path: Archive Routes.js
+   URL: {{baseUrl}}/api/archivedAssignments
+   Body Mode: none
+
+87. [POST] POST /api/helpdesk/
+   Path: Help Desk Routes.js
+   URL: {{baseUrl}}/api/helpdesk/
+   Body Mode: raw
+
+88. [GET] GET /api/helpdesk/mine
+   Path: Help Desk Routes.js
+   URL: {{baseUrl}}/api/helpdesk/mine
+   Body Mode: none
+
+89. [GET] GET /api/checkavailability/vehiclebylocation
+   Path: Check Availability Routes.js
+   URL: {{baseUrl}}/api/checkavailability/vehiclebylocation
+   Body Mode: none
+
+90. [GET] GET /api/checkavailability/drivers
+   Path: Check Availability Routes.js
+   URL: {{baseUrl}}/api/checkavailability/drivers
+   Body Mode: none
+
+91. [GET] GET /api/checkavailability/vehicles
+   Path: Check Availability Routes.js
+   URL: {{baseUrl}}/api/checkavailability/vehicles
+   Body Mode: none
+
+92. [GET] GET /api/trip-history
+   Path: Trip History Routes.js
+   URL: {{baseUrl}}/api/trip-history
+   Body Mode: none
+
+93. [GET] GET /api/trip-history/:tripId
+   Path: Trip History Routes.js
+   URL: {{baseUrl}}/api/trip-history/:tripId
+   Body Mode: none
+
+94. [GET] GET /api/all/events
+   Path: Trip History Events Routes.js
+   URL: {{baseUrl}}/api/all/events
+   Body Mode: none
+
+95. [GET] GET /api/gpsalerts/
+   Path: Gps Alert Routes.js
+   URL: {{baseUrl}}/api/gpsalerts/
+   Body Mode: none
+
+96. [GET] GET /api/gpsalerts/:id
+   Path: Gps Alert Routes.js
+   URL: {{baseUrl}}/api/gpsalerts/:id
+   Body Mode: none
+
+97. [PATCH] PATCH /api/gpsalerts/:id/acknowledge
+   Path: Gps Alert Routes.js
+   URL: {{baseUrl}}/api/gpsalerts/:id/acknowledge
+   Body Mode: raw
+
+98. [DELETE] DELETE /api/gpsalerts/:id
+   Path: Gps Alert Routes.js
+   URL: {{baseUrl}}/api/gpsalerts/:id
+   Body Mode: none
+
+99. [GET] GET /api/telemetry/
+   Path: Telemetry Routes.js
+   URL: {{baseUrl}}/api/telemetry/
+   Body Mode: none
+
+100. [GET] GET /api/telemetry/:id
+   Path: Telemetry Routes.js
+   URL: {{baseUrl}}/api/telemetry/:id
+   Body Mode: none
+
+101. [DELETE] DELETE /api/telemetry/:id
+   Path: Telemetry Routes.js
+   URL: {{baseUrl}}/api/telemetry/:id
+   Body Mode: none
+
+102. [GET] GET /api/telemetry/stats/distance
+   Path: Telemetry Stats Routes.js
+   URL: {{baseUrl}}/api/telemetry/stats/distance
+   Body Mode: none
+
+103. [GET] GET /api/telemetry/stats/average-speed
+   Path: Telemetry Stats Routes.js
+   URL: {{baseUrl}}/api/telemetry/stats/average-speed
+   Body Mode: none
+
+104. [GET] GET /api/telemetry/stats/idle-time
+   Path: Telemetry Stats Routes.js
+   URL: {{baseUrl}}/api/telemetry/stats/idle-time
+   Body Mode: none
+
+105. [GET] GET /api/telemetry/stats/overspeed-count
+   Path: Telemetry Stats Routes.js
+   URL: {{baseUrl}}/api/telemetry/stats/overspeed-count
+   Body Mode: none
+
+106. [GET] GET /api/telemetry/dashboard/
+   Path: Telemetry Dashboard Routes.js
+   URL: {{baseUrl}}/api/telemetry/dashboard/
+   Body Mode: none
+

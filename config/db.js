@@ -4,7 +4,15 @@
 // Purpose: To make the MongoDB connection 
 
 const mongoose = require('mongoose');
+const dns = require('dns');
 const { sendAlertEmail } = require('../services/mailer');
+
+// Set DNS servers to resolve MongoDB SRV records correctly (handles querySrv ENOTFOUND on some Windows/local network configurations)
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (dnsErr) {
+  console.warn('Warning: Failed to set custom DNS servers, using system defaults:', dnsErr.message);
+}
 
 let retryCount = 0;
 const maxRetries = 5;

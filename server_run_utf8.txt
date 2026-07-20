@@ -1,0 +1,25 @@
+﻿driverVehicleRoutes loaded ..
+[tripHistoryController] Controller loaded.
+[tripHistoryEventsController] Controller loaded.
+[tripHistoryEventsRoutes] Initializing trip history events routes...
+[tripHistoryEventsRoutes] Routes registered successfully.
+[tripHistoryEventsReplayController] Controller loaded.
+[tripHistoryEventsReplayRoutes] Initializing trip history events replay routes...
+[tripHistoryEventsReplayRoutes] Routes registered successfully.
+[server] Routes mounted: 
+ WebSocket server started
+[enrichment] Starting processing loop...
+Server + WebSocket running on port 3006
+MongoDB connected
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+ [CRON] Running GPS device health check...
+ [CRON] Health check completed. Devices updated: 0
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets
+[enrichment] Processing 10 raw packets

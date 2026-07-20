@@ -16,7 +16,7 @@ exports.assignDriverToVehicle = async (req, res) => {
     const { driver_id, vehicle_id, from_datetime, to_datetime, instructions } = req.body;
 
     // Validate driver
-    const driver = await User.findById(driver_id);
+    const driver = await Driver.findById(driver_id);
     if (!driver) {
       return res.status(404).json({ error: "Driver not found" });
     }

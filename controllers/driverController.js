@@ -142,272 +142,270 @@ exports.getAllDrivers = async (req, res) => {
     // ── Client scoping: clients may only see drivers belonging to their account ──
     const isClientRole = req.user?.role?.startsWith("client_");
     const clientProfileId = req.user?.client_profile_id;
+    const tenant_id = req.user?.tenant_id;
+ 
 
     let drivers;
     if (isClientRole) {
       if (!clientProfileId) {
         return res.status(403).json({ success: false, message: "Client profile not linked to user" });
       }
-      // Find all employees that belong to this client, then fetch matching drivers by email
-      const clientEmployees = await Employee.find(
-        { client_profile_id: clientProfileId },
-        "email"
-      );
-      const clientEmails = clientEmployees.map((e) => e.email);
-      drivers = await Driver.find({ email_id: { $in: clientEmails } });
-    } else {
-      drivers = await Driver.find();
+
+      // find all users from User collection where tenant_id = meta.tenant_id and client_profile_id = clientProfileId and role = "driver"
+      const users = await User.find({ tenant_id: tenant_id, client_profile_id: clientProfileId, role: "69f88fe73e138c94685cd2e5" });
+      drivers= users
     }
 
-    await logger.audit(
-      meta.emp_id,
-      meta.emp_name,
-      meta.role,
-      "read",
-      "driver",
-      `Fetched ${drivers.length} drivers${isClientRole ? ` for client ${clientProfileId}` : ""}`,
-      "success",
-      meta.tenant_id,
-      meta.trace_id
-    );
-
-    res.json(drivers);
-
-  } catch (err) {
-    console.error("getAllDrivers error:", err);
-    await logger.error(
-      meta.emp_id,
-      meta.emp_name,
-      meta.role,
-      err,
-      "driver",
-      meta.tenant_id,
-      meta.trace_id,
-      500);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// READ Single Driver by ID
-exports.getDriverById = async (req, res) => {
-  const meta = getMeta(req);
-  console.log('getDriverById: req.params.id: ', req.params.id);
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-    await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
-    console.log('Driver not found');
-    return res.status(404).json({ error: 'Driver not found' });
-  }
-  try {
-    const driver = await Driver.findById(req.params.id);
-
-    if (!driver) {
-      await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
-      return res.status(404).json({ error: 'Driver not found' });
-    }
-
-    // ── Client scoping: enforce ownership via Employee link ──
-    const isClientRole = req.user?.role?.startsWith("client_");
-    const clientProfileId = req.user?.client_profile_id;
-
-    if (isClientRole) {
-      if (!clientProfileId) {
-        return res.status(403).json({ success: false, message: "Client profile not linked to user" });
-      }
-      const employee = await Employee.findOne({
-        email: driver.email_id,
-        client_profile_id: clientProfileId
-      });
-      if (!employee) {
-        return res.status(403).json({ error: "Access denied: driver does not belong to your account" });
-      }
-    }
-
-    await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", `Fetched driver ${driver.driver_name}`, "success", meta.tenant_id, meta.trace_id);
-
-    res.json(driver);
-
-  } catch (err) {
-    console.error("getDriverById error:", err);
-    await logger.error(meta.emp_id, meta.emp_name, meta.role, err, "driver", meta.tenant_id, meta.trace_id, 500);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// UPDATE Driver
-exports.updateDriver = async (req, res) => {
-  const meta = getMeta(req);
-  console.log('updateDriver: req.params.id: ', req.params.id);
-  try {
-    const driver = await Driver.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    if (!driver) {
-      await logger.audit(meta.emp_id, meta.emp_name, meta.role, "update", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
-      return res.status(404).json({ error: 'Driver not found' });
-    }
-
-    await logger.audit(meta.emp_id, meta.emp_name, meta.role, "update", "driver", `Driver ${driver.driver_name} updated`, "success", meta.tenant_id, meta.trace_id);
-
-    res.json(driver);
-
-  } catch (err) {
-    console.error("updateDriver error:", err);
-    await logger.error(meta.emp_id, meta.emp_name, meta.role, err, "driver", meta.tenant_id, meta.trace_id, 400);
-    res.status(400).json({ error: err.message });
-  }
-};
-
-// DELETE Driver + Employee + User
-exports.deleteDriver = async (req, res) => {
-  const meta = getMeta(req);
-  let attempt = 0;
-
-  while (attempt < MAX_RETRIES) {
-    const session = await mongoose.startSession();
-    let deletedDriver;
-    console.log('deleteDriver: req.params.id: ', req.params.id);
-    try {
-      attempt++;
-
-      await session.withTransaction(async () => {
-        const driver = await Driver.findById(req.params.id).session(session);
-
-        if (!driver) {
-          const err = new Error("Driver not found");
-          err.statusCode = 404;
-          throw err;
-        }
-
-        // Find User by email
-        const user = await User.findOne({ email: driver.email_id }).session(session);
-        if (user) {
-          // Delete User
-          await User.findByIdAndDelete(user._id).session(session);
-
-          // Delete Employee
-          await Employee.findByIdAndDelete(user.employee_id).session(session);
-        }
-
-        // Delete Driver
-        await Driver.findByIdAndDelete(req.params.id).session(session);
-
-        deletedDriver = driver;
-      });
-
-      session.endSession();
 
       await logger.audit(
         meta.emp_id,
         meta.emp_name,
         meta.role,
-        "delete",
+        "read",
         "driver",
-        `Driver ${deletedDriver.driver_name} deleted`,
+        `Fetched ${drivers.length} drivers${isClientRole ? ` for client ${clientProfileId}` : ""}`,
         "success",
         meta.tenant_id,
         meta.trace_id
       );
 
-      return res.json({ message: 'Driver, Employee and User deleted successfully' });
+      res.json(drivers);
 
     } catch (err) {
-      console.error("deleteDriver error:", err);
-      session.endSession();
-
-      if (err.statusCode === 404) {
-        await logger.audit(meta.emp_id, meta.emp_name, meta.role, "delete", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
-        return res.status(404).json({ error: err.message });
-      }
-
-      if (err.errorLabels?.includes("TransientTransactionError") && attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, BASE_DELAY_MS * attempt));
-        continue;
-      }
-
+      console.error("getAllDrivers error:", err);
       await logger.error(
-        meta.emp_id, meta.emp_name, meta.role, err, "driver", meta.tenant_id, meta.trace_id, 500);
-
-      return res.status(500).json({ error: err.message });
+        meta.emp_id,
+        meta.emp_name,
+        meta.role,
+        err,
+        "driver",
+        meta.tenant_id,
+        meta.trace_id,
+        500);
+      res.status(500).json({ error: err.message });
     }
-  }
-};
+  };
 
-
-// for driver interface- mobile app
-exports.loginDriver = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "email and password are required" });
+  // READ Single Driver by ID
+  exports.getDriverById = async (req, res) => {
+    const meta = getMeta(req);
+    console.log('getDriverById: req.params.id: ', req.params.id);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
+      console.log('Driver not found');
+      return res.status(404).json({ error: 'Driver not found' });
     }
+    try {
+      const driver = await Driver.findById(req.params.id);
 
-    //  check driver in user table
-    const driver = await User.findOne({ 
-      email: email
-    })
-    .populate("role")
-    .populate("employee_id")
-      ;
+      if (!driver) {
+        await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
+        return res.status(404).json({ error: 'Driver not found' });
+      }
 
-    if (!driver) {
-      return res.status(404).json({ error: "Driver not found" });
-    }
+      // ── Client scoping: enforce ownership via Employee link ──
+      const isClientRole = req.user?.role?.startsWith("client_");
+      const clientProfileId = req.user?.client_profile_id;
 
-    const isPasswordValid = await bcrypt.compare(password, driver.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid password" });
-    }
-
-    const employee = await Employee.findById(driver.employee_id);
-    if (!employee) {
-      return res.status(404).json({ error: "Employee not found" });
-    }
-
-    // check driver collection
-    const driverRecord = await Driver.findOne({ email_id: email });
-    let gpsDeviceData = null;
-    let registration_number = null;
-
-    if (driverRecord) {
-      // check vehicle assigned
-      const vehicleAssignment = await DriverVehicleAssignment.findOne({
-        driver_id: driverRecord._id,
-        status: "ACTIVE"
-      }).populate("vehicle_id");
-
-      if (vehicleAssignment && vehicleAssignment.vehicle_id) {
-        const vehicle = vehicleAssignment.vehicle_id;
-        registration_number = vehicle.registration_number;
-
-        // check gps device assigned to the vehicle
-        const deviceMap = await VehicleDeviceMap.findOne({
-          vehicle_id: vehicle._id,
-          status: "MAPPED"
-        }).populate("gps_device_id");
-
-        if (deviceMap && deviceMap.gps_device_id) {
-          gpsDeviceData = deviceMap.gps_device_id;
+      if (isClientRole) {
+        if (!clientProfileId) {
+          return res.status(403).json({ success: false, message: "Client profile not linked to user" });
+        }
+        const employee = await Employee.findOne({
+          email: driver.email_id,
+          client_profile_id: clientProfileId
+        });
+        if (!employee) {
+          return res.status(403).json({ error: "Access denied: driver does not belong to your account" });
         }
       }
+
+      await logger.audit(meta.emp_id, meta.emp_name, meta.role, "read", "driver", `Fetched driver ${driver.driver_name}`, "success", meta.tenant_id, meta.trace_id);
+
+      res.json(driver);
+
+    } catch (err) {
+      console.error("getDriverById error:", err);
+      await logger.error(meta.emp_id, meta.emp_name, meta.role, err, "driver", meta.tenant_id, meta.trace_id, 500);
+      res.status(500).json({ error: err.message });
     }
+  };
+
+  // UPDATE Driver
+  exports.updateDriver = async (req, res) => {
+    const meta = getMeta(req);
+    console.log('updateDriver: req.params.id: ', req.params.id);
+    try {
+      const driver = await Driver.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      );
+
+      if (!driver) {
+        await logger.audit(meta.emp_id, meta.emp_name, meta.role, "update", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
+        return res.status(404).json({ error: 'Driver not found' });
+      }
+
+      await logger.audit(meta.emp_id, meta.emp_name, meta.role, "update", "driver", `Driver ${driver.driver_name} updated`, "success", meta.tenant_id, meta.trace_id);
+
+      res.json(driver);
+
+    } catch (err) {
+      console.error("updateDriver error:", err);
+      await logger.error(meta.emp_id, meta.emp_name, meta.role, err, "driver", meta.tenant_id, meta.trace_id, 400);
+      res.status(400).json({ error: err.message });
+    }
+  };
+
+  // DELETE Driver + Employee + User
+  exports.deleteDriver = async (req, res) => {
+    const meta = getMeta(req);
+    let attempt = 0;
+
+    while (attempt < MAX_RETRIES) {
+      const session = await mongoose.startSession();
+      let deletedDriver;
+      console.log('deleteDriver: req.params.id: ', req.params.id);
+      try {
+        attempt++;
+
+        await session.withTransaction(async () => {
+          const driver = await Driver.findById(req.params.id).session(session);
+
+          if (!driver) {
+            const err = new Error("Driver not found");
+            err.statusCode = 404;
+            throw err;
+          }
+
+          // Find User by email
+          const user = await User.findOne({ email: driver.email_id }).session(session);
+          if (user) {
+            // Delete User
+            await User.findByIdAndDelete(user._id).session(session);
+
+            // Delete Employee
+            await Employee.findByIdAndDelete(user.employee_id).session(session);
+          }
+
+          // Delete Driver
+          await Driver.findByIdAndDelete(req.params.id).session(session);
+
+          deletedDriver = driver;
+        });
+
+        session.endSession();
+
+        await logger.audit(
+          meta.emp_id,
+          meta.emp_name,
+          meta.role,
+          "delete",
+          "driver",
+          `Driver ${deletedDriver.driver_name} deleted`,
+          "success",
+          meta.tenant_id,
+          meta.trace_id
+        );
+
+        return res.json({ message: 'Driver, Employee and User deleted successfully' });
+
+      } catch (err) {
+        console.error("deleteDriver error:", err);
+        session.endSession();
+
+        if (err.statusCode === 404) {
+          await logger.audit(meta.emp_id, meta.emp_name, meta.role, "delete", "driver", "Driver not found", "failed", meta.tenant_id, meta.trace_id);
+          return res.status(404).json({ error: err.message });
+        }
+
+        if (err.errorLabels?.includes("TransientTransactionError") && attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, BASE_DELAY_MS * attempt));
+          continue;
+        }
+
+        await logger.error(
+          meta.emp_id, meta.emp_name, meta.role, err, "driver", meta.tenant_id, meta.trace_id, 500);
+
+        return res.status(500).json({ error: err.message });
+      }
+    }
+  };
 
 
-    const { accessToken, refreshToken } = generateTokens(driver);
+  // for driver interface- mobile app
+  exports.loginDriver = async (req, res) => {
+    try {
+      const { email, password } = req.body;
 
-    return res.status(200).json({
-      message: "Driver logged in successfully",
-      accessToken,
-      refreshToken,
-      gpsDevice: gpsDeviceData,
-      registration_number: registration_number
-    });
+      if (!email || !password) {
+        return res.status(400).json({ error: "email and password are required" });
+      }
 
-  } catch (err) {
-    console.error("loginDriver error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-};
+      //  check driver in user table
+      const driver = await User.findOne({
+        email: email
+      })
+        .populate("role")
+        .populate("employee_id")
+        ;
+
+      if (!driver) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, driver.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      const employee = await Employee.findById(driver.employee_id);
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+
+      // check driver collection
+      const driverRecord = await Driver.findOne({ email_id: email });
+      let gpsDeviceData = null;
+      let registration_number = null;
+
+      if (driverRecord) {
+        // check vehicle assigned
+        const vehicleAssignment = await DriverVehicleAssignment.findOne({
+          driver_id: driverRecord._id,
+          status: "ACTIVE"
+        }).populate("vehicle_id");
+
+        if (vehicleAssignment && vehicleAssignment.vehicle_id) {
+          const vehicle = vehicleAssignment.vehicle_id;
+          registration_number = vehicle.registration_number;
+
+          // check gps device assigned to the vehicle
+          const deviceMap = await VehicleDeviceMap.findOne({
+            vehicle_id: vehicle._id,
+            status: "MAPPED"
+          }).populate("gps_device_id");
+
+          if (deviceMap && deviceMap.gps_device_id) {
+            gpsDeviceData = deviceMap.gps_device_id;
+          }
+        }
+      }
+
+
+      const { accessToken, refreshToken } = generateTokens(driver);
+
+      return res.status(200).json({
+        message: "Driver logged in successfully",
+        accessToken,
+        refreshToken,
+        gpsDevice: gpsDeviceData,
+        registration_number: registration_number
+      });
+
+    } catch (err) {
+      console.error("loginDriver error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  };

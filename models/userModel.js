@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema({
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   scope: { type: String, enum: ["system", "tenant", "client"], required: true }, // denormalized for faster reporting
   tenant_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
-  client_profile_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' }
+  client_profile_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+  driver_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' }
 }, { collection: 'users' });
 
 userSchema.pre('save', async function () {

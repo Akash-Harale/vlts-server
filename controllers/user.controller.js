@@ -8,6 +8,7 @@ const User = require('../models/userModel');
 const Employee = require('../models/employeeModel');
 const ClientProfile = require('../models/client.model');
 const Role = require('../models/roleModel');
+const Driver = require('../models/driver');
 const logger = require('../utils/logger');
 
 
@@ -16,9 +17,19 @@ exports.getRoles = async (req, res, next) => {
     const isClientRole = req.user?.role?.startsWith("client_");
     let query = {};
     if (isClientRole) {
-      query = { name: { $regex: "^client_", $ne: "client_admin" } };
+      query = { 
+        $or: [
+          { name: { $regex: "^client_", $ne: "client_admin" } },
+          { name: "driver" }
+        ] 
+      };
     } else {
-      query = { scope: "tenant" };
+      query = { 
+        $or: [
+          { scope: "tenant" },
+          { name: "driver" }
+        ] 
+      };
     }
     const roles = await Role.find(query);
     res.json(roles);
@@ -42,7 +53,7 @@ exports.createUser = async (req, res, next) => {
       attempt++;
 
       const result = await session.withTransaction(async () => {
-        const { name, email, mobile_number, designation, password, roleName } = req.body;
+        const { name, email, mobile_number, designation, password, roleName, driver_license } = req.body;
 
         if (req.user?.role?.startsWith("client_") && roleName === 'client_admin') {
           throw new Error("Cannot assign client_admin role");
@@ -57,12 +68,25 @@ exports.createUser = async (req, res, next) => {
           name,
           email,
           mobile_number,
-          designation,
+          designation: roleName === 'driver' ? 'Driver' : designation,
           scope: req.user?.role?.startsWith("client_") ? "client" : "tenant",
           tenant_id: req.user.tenant_id,
           client_profile_id: req.user?.client_profile_id || null
         }], { session });
         console.log("employee created: ", employee);
+
+        let driverRecord = null;
+        if (roleName === 'driver') {
+          driverRecord = await Driver.create([{
+            driver_name: name,
+            driver_license: driver_license || "N/A",
+            mobile_number,
+            email_id: email,
+            user_id: email
+          }], { session });
+          console.log("driver created: ", driverRecord);
+        }
+
         const user = await User.create([{
           employee_id: employee[0]._id,
           email,
@@ -70,7 +94,8 @@ exports.createUser = async (req, res, next) => {
           role: role._id,
           scope: req.user?.role?.startsWith("client_") ? "client" : "system",
           tenant_id: req.user.tenant_id,
-          client_profile_id: req.user?.client_profile_id || null
+          client_profile_id: req.user?.client_profile_id || null,
+          driver_id: driverRecord ? driverRecord[0]._id : null
         }], { session });
         console.log("user created: ", user);
         return { employee: employee[0], user: user[0] };
@@ -136,7 +161,8 @@ exports.getUsers = async (req, res, next) => {
     }
     const users = await User.find(query)
       .populate('role')
-      .populate('employee_id');
+      .populate('employee_id')
+      .populate('driver_id');
     res.json(users);
   } catch (err) {
     await logger.error(
@@ -162,7 +188,7 @@ exports.getUserById = async (req, res, next) => {
       _id: req.params.id,
       tenant_id: req.user.tenant_id,
       client_profile_id: req.user?.client_profile_id || { $exists: true }
-    }).populate('role').populate('employee_id');
+    }).populate('role').populate('employee_id').populate('driver_id');
 
     if (!user) {
       return res.status(404).json({ message: "Tenant user not found" });
@@ -194,14 +220,14 @@ exports.updateUser = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { roleName, designation, mobile_number, name } = req.body;
+    const { roleName, designation, mobile_number, name, driver_license } = req.body;
     const userId = req.params.id;
 
-    if (!roleName && !designation && !mobile_number && !name) {
+    if (!roleName && !designation && !mobile_number && !name && !driver_license) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
-        message: "At least one field (roleName, designation, mobile_number, name) is required"
+        message: "At least one field (roleName, designation, mobile_number, name, driver_license) is required"
       });
     }
 
@@ -209,7 +235,7 @@ exports.updateUser = async (req, res, next) => {
       _id: userId,
       tenant_id: req.user.tenant_id,
       client_profile_id: req.user?.client_profile_id || { $exists: true }
-    }).populate('role').session(session);
+    }).populate('role').populate('employee_id').session(session);
 
     // if user is admin then can't be edited, client admin has to contact with tenant admin to edit
     if (user.role.name === 'client_admin') {
@@ -255,13 +281,43 @@ exports.updateUser = async (req, res, next) => {
     if (designation) empUpdate.designation = designation;
     if (mobile_number) empUpdate.mobile_number = mobile_number;
     if (name) empUpdate.name = name;
+    if (roleName === 'driver') empUpdate.designation = 'Driver';
 
     if (Object.keys(empUpdate).length > 0) {
       await Employee.findByIdAndUpdate(
-        user.employee_id,
+        user.employee_id._id,
         { $set: empUpdate },
         { new: true, runValidators: true, session }
       );
+    }
+
+    // DRIVER DOCUMENT UPDATE/CREATE
+    if (roleName === 'driver' || user.role.name === 'driver') {
+      const driverData = {
+        driver_name: name || user.employee_id?.name,
+        mobile_number: mobile_number || user.employee_id?.mobile_number,
+        email_id: user.email,
+        user_id: user.email
+      };
+      if (driver_license) {
+        driverData.driver_license = driver_license;
+      }
+
+      // Check if driver record already exists for this email
+      let driverRec = await Driver.findOne({ email_id: user.email }).session(session);
+      if (driverRec) {
+        await Driver.findByIdAndUpdate(
+          driverRec._id,
+          { $set: driverData },
+          { new: true, runValidators: true, session }
+        );
+      } else {
+        // Create it if they transitioned to driver role
+        driverData.driver_license = driverData.driver_license || "N/A";
+        const newDriver = await Driver.create([driverData], { session });
+        user.driver_id = newDriver[0]._id;
+        await user.save({ session });
+      }
     }
 
     await session.commitTransaction();

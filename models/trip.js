@@ -19,7 +19,7 @@ const tripSchema = new mongoose.Schema({
   },
   driver_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Driver",
+    ref: "User",
     required: true, // or true, if you want it mandatory
   },
   departure_time: { type: Date, default: null },

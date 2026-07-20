@@ -141,9 +141,10 @@ app.use("/api", tripHistoryEventsReplayRoutes);
 
 // 28/02/2026
 app.use("/api/gpsalerts", gpsAlertRoutes);
-app.use("/api/telemetry", telemetryRoutes);
 app.use("/api/telemetry/stats", telemetryStatsRoutes);
 app.use("/api/telemetry/dashboard", telemetryDashboardRoutes);
+app.use("/api/telemetry", telemetryRoutes);
+
 
 console.log("[server] Routes mounted: ");
 
