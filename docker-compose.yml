@@ -1,11 +1,11 @@
 services:
   app:
-    image: nutantek/vlts-client-server:v1
+    image: nutantek/vlts-client-server:v2
     build: .
     container_name: vlts-client-server
     restart: always
     ports:
-      - "3008:3000"
+      - "3005:3005"
     dns:    
       - 8.8.8.8
       - 1.1.1.1 

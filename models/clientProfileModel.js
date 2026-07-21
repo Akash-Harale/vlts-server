@@ -19,6 +19,7 @@ const clientProfileSchema = new mongoose.Schema({
   mobile_number: { type: String },
   whatsapp_number: { type: String },
   email_id: { type: String, required: true },
+  client_type: { type: String, enum: ["fleet admin", "school admin", "individual owner"], default: "fleet admin" },
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   auth_methods: { type: [String], default: ['local'] },
   created_at: { type: Date, default: Date.now },

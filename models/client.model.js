@@ -17,6 +17,7 @@ const clientSchema = new mongoose.Schema({
     mobile_number: { type: String },
     whatsapp_number: { type: String },
     email_id: { type: String, required: true },
+    client_type: { type: String, enum: ["fleet admin", "school admin", "individual owner"], default: "fleet admin" },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now }
 });

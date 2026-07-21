@@ -32,6 +32,7 @@ exports.createClient = async (req, res, next) => {
         entity_name,
         contact_name,
         designation,
+        client_type,
         gst_number,
         cin_number,
         address1,
@@ -79,6 +80,7 @@ exports.createClient = async (req, res, next) => {
                     tenant_id: req.user.tenant_id,
                     entity_name,
                     contact_name,
+                    client_type: client_type || "fleet admin",
                     gst_number: gst_number.toUpperCase().trim(),
                     cin_number: cin_number.toUpperCase().trim(),
                     address1,
@@ -94,8 +96,15 @@ exports.createClient = async (req, res, next) => {
                     status: "active"
                 }], { session });
 
-                const clientAdminRole = await Role.findOne({ name: "client_admin" }).session(session);
-                if (!clientAdminRole) throw new Error("Client Admin role not found");
+                let targetRoleName = "client_admin";
+                if (client_type === "school admin") {
+                    targetRoleName = "school_admin";
+                } else if (client_type === "individual owner") {
+                    targetRoleName = "individual_owner";
+                }
+
+                const clientAdminRole = await Role.findOne({ name: targetRoleName }).session(session);
+                if (!clientAdminRole) throw new Error(`Role "${targetRoleName}" not found`);
 
                 const employee = await Employee.create([{
                     name: contact_name,
